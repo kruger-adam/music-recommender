@@ -8,11 +8,19 @@ LIKE_THRESHOLD = 0.80   # played ≥80% → liked
 RECENT_WINDOW  = 50     # don't repeat last N played songs
 
 SEED_QUERIES = [
-    "top hits 2024", "popular songs 2024", "indie pop hits",
-    "classic rock hits", "top rap 2024", "r&b hits 2024",
-    "pop hits 2023", "electronic music hits", "alternative rock 2024",
-    "best songs 2025",
+    "90s euro pop hits",
+    "2000s dance pop hits",
+    "80s pop hits",
+    "classic rock hits Rolling Stones Beatles",
+    "70s classic rock",
+    "90s country hits",
+    "classic country hits",
+    "r&b hits 2000s",
+    "indie pop hits",
+    "alternative rock 90s",
 ]
+
+COLD_INJECT_RATE = 0.20  # 1 in 5 songs explores a new genre
 
 
 def _parse_song(raw):
@@ -109,7 +117,10 @@ def get_next_song(user_id):
     superliked_ids = [r['video_id'] for r in superliked]
     liked_ids      = [r['video_id'] for r in liked]
     seed_ids       = superliked_ids if superliked_ids else liked_ids
-    candidates     = _warm_candidates(seed_ids) if seed_ids else _cold_candidates()
+    if not seed_ids or random.random() < COLD_INJECT_RATE:
+        candidates = _cold_candidates() or (_warm_candidates(seed_ids) if seed_ids else [])
+    else:
+        candidates = _warm_candidates(seed_ids)
 
     if not candidates:
         return None
