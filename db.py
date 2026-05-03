@@ -73,6 +73,10 @@ def init_db():
     try:
         conn.execute('ALTER TABLE plays ADD COLUMN superliked INTEGER DEFAULT 0')
     except Exception:
-        pass  # column already exists
+        pass
+    try:
+        conn.execute('ALTER TABLE plays ADD COLUMN skip_reason TEXT')
+    except Exception:
+        pass
     conn.commit()
     conn.close()

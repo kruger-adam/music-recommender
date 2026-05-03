@@ -6,15 +6,17 @@ function getUserId() {
   return id;
 }
 
-let player          = null;
-let ytApiReady      = false;
-let currentSong     = null;
-let feedbackSent    = false;
-let superlikedSent  = false;
-let progressTimer   = null;
-let adPlaying       = false;
-let songHistory     = [];
-let historyIndex    = -1;
+let player           = null;
+let ytApiReady       = false;
+let currentSong      = null;
+let feedbackSent     = false;
+let superlikedSent   = false;
+let progressTimer    = null;
+let adPlaying        = false;
+let songHistory      = [];
+let historyIndex     = -1;
+let skipReasonId     = null;
+let skipReasonTimer  = null;
 
 // ── YouTube IFrame API ────────────────────────────────────────────────────────
 
@@ -77,6 +79,7 @@ function playSong(song) {
   feedbackSent    = false;
   superlikedSent  = false;
   adPlaying       = false;
+  hideSkipReason();
   const superBtn = document.getElementById('btn-superlike');
   superBtn.classList.remove('superliked');
   superBtn.disabled = false;
@@ -167,7 +170,9 @@ function skipSong() {
   const liked    = ratio >= LIKE_THRESHOLD;
   sendFeedback(ratio, liked);
   toast(liked ? 'Liked ♥' : 'Skipped', liked ? '#1db954' : '#888');
+  const skippedId = currentSong.video_id;
   loadNextSong();
+  if (!liked) showSkipReason(skippedId);
 }
 
 function togglePause() {
@@ -384,6 +389,39 @@ function toast(msg, color = '#fff') {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 900);
 }
+
+// ── Skip reason ───────────────────────────────────────────────────────────────
+
+function showSkipReason(videoId) {
+  skipReasonId = videoId;
+  clearTimeout(skipReasonTimer);
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+  document.getElementById('skip-reason-panel').style.display = '';
+  skipReasonTimer = setTimeout(hideSkipReason, 5000);
+}
+
+function hideSkipReason() {
+  clearTimeout(skipReasonTimer);
+  document.getElementById('skip-reason-panel').style.display = 'none';
+  skipReasonId = null;
+}
+
+function sendSkipReason(reason) {
+  if (!skipReasonId) return;
+  fetch('/api/skip-reason', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'X-User-ID': getUserId() },
+    body: JSON.stringify({ video_id: skipReasonId, reason }),
+  });
+  hideSkipReason();
+}
+
+document.querySelectorAll('.chip').forEach(btn => {
+  btn.addEventListener('click', () => {
+    btn.classList.add('selected');
+    sendSkipReason(btn.dataset.reason);
+  });
+});
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 

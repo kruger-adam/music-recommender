@@ -59,6 +59,21 @@ def superlike():
     return jsonify({'ok': True})
 
 
+@app.route('/api/skip-reason', methods=['POST'])
+def skip_reason():
+    d = request.json
+    user_id = get_user_id()
+    db = get_db()
+    db.execute(
+        '''UPDATE plays SET skip_reason=?
+           WHERE id=(SELECT MAX(id) FROM plays WHERE user_id=? AND video_id=?)''',
+        (d['reason'], user_id, d['video_id'])
+    )
+    db.commit()
+    db.close()
+    return jsonify({'ok': True})
+
+
 @app.route('/api/stats')
 def stats():
     user_id = get_user_id()

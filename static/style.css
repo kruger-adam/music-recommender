@@ -162,6 +162,43 @@ body {
 .btn-superlike.superliked { color: #1db954; border-color: #1db954; }
 .btn-superlike:active { transform: scale(1.2); }
 
+/* ── Skip reason ── */
+.skip-reason-panel {
+  margin-bottom: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #232323;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+.skip-reason-label {
+  font-size: 11px;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.skip-reason-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.chip {
+  background: transparent;
+  border: 1px solid #2e2e2e;
+  color: #666;
+  font-size: 11px;
+  padding: 5px 11px;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: border-color 0.1s, color 0.1s, background 0.1s;
+}
+
+.chip:hover { border-color: #555; color: #ccc; }
+.chip.selected { border-color: #777; color: #ccc; background: #242424; }
+
 /* ── Stats ── */
 .stats {
   font-size: 11px;
