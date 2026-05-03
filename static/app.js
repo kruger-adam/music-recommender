@@ -397,7 +397,6 @@ function showSkipReason(videoId) {
   clearTimeout(skipReasonTimer);
   document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
   document.getElementById('skip-reason-panel').style.display = '';
-  skipReasonTimer = setTimeout(hideSkipReason, 5000);
 }
 
 function hideSkipReason() {
