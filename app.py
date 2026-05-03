@@ -3,6 +3,7 @@ from db import init_db, get_db
 from recommender import get_next_song, record_feedback
 
 app = Flask(__name__, static_folder='static')
+init_db()
 
 
 @app.route('/')
@@ -40,8 +41,8 @@ def feedback():
 @app.route('/api/stats')
 def stats():
     db = get_db()
-    total  = db.execute('SELECT COUNT(*) FROM plays WHERE liked IS NOT NULL').fetchone()[0]
-    liked  = db.execute('SELECT COUNT(*) FROM plays WHERE liked=1').fetchone()[0]
+    total  = db.execute('SELECT COUNT(*) as n FROM plays WHERE liked IS NOT NULL').fetchone()['n']
+    liked  = db.execute('SELECT COUNT(*) as n FROM plays WHERE liked=1').fetchone()['n']
     top    = db.execute('''
         SELECT artist_name, like_count, skip_count
         FROM artist_scores
@@ -58,5 +59,4 @@ def stats():
 
 
 if __name__ == '__main__':
-    init_db()
     app.run(debug=True, port=5001)
