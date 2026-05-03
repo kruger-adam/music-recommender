@@ -2,16 +2,44 @@ import os
 import libsql_experimental as libsql
 
 
-def _dict_factory(cursor, row):
-    return {col[0]: val for col, val in zip(cursor.description, row)}
+class _Cursor:
+    def __init__(self, cursor):
+        self._c = cursor
+
+    def fetchone(self):
+        row = self._c.fetchone()
+        if row is None:
+            return None
+        cols = [d[0] for d in self._c.description]
+        return dict(zip(cols, row))
+
+    def fetchall(self):
+        rows = self._c.fetchall()
+        if not rows:
+            return []
+        cols = [d[0] for d in self._c.description]
+        return [dict(zip(cols, r)) for r in rows]
+
+
+class _Conn:
+    def __init__(self, conn):
+        self._conn = conn
+
+    def execute(self, sql, params=()):
+        return _Cursor(self._conn.execute(sql, params))
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        self._conn.close()
 
 
 def get_db():
     url = os.getenv('TURSO_DATABASE_URL', 'music.db')
     token = os.getenv('TURSO_AUTH_TOKEN')
     conn = libsql.connect(url, auth_token=token) if token else libsql.connect(url)
-    conn.row_factory = _dict_factory
-    return conn
+    return _Conn(conn)
 
 
 def init_db():
