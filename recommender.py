@@ -93,14 +93,20 @@ def _warm_candidates(liked_ids):
 
 def get_next_song(user_id):
     db = get_db()
+    superliked = db.execute(
+        'SELECT video_id FROM plays WHERE user_id=? AND superliked=1 ORDER BY played_at DESC LIMIT 10',
+        (user_id,)
+    ).fetchall()
     liked = db.execute(
         'SELECT video_id FROM plays WHERE user_id=? AND liked=1 ORDER BY played_at DESC LIMIT 20',
         (user_id,)
     ).fetchall()
     db.close()
 
-    liked_ids  = [r['video_id'] for r in liked]
-    candidates = _warm_candidates(liked_ids) if liked_ids else _cold_candidates()
+    superliked_ids = [r['video_id'] for r in superliked]
+    liked_ids      = [r['video_id'] for r in liked]
+    seed_ids       = superliked_ids if superliked_ids else liked_ids
+    candidates     = _warm_candidates(seed_ids) if seed_ids else _cold_candidates()
 
     if not candidates:
         return None
@@ -112,14 +118,22 @@ def get_next_song(user_id):
     return ranked[0]
 
 
-def record_feedback(user_id, video_id, title, artist_name, artist_id, completion, liked):
+def record_feedback(user_id, video_id, title, artist_name, artist_id, completion, liked, superliked=False):
     db = get_db()
     db.execute(
-        'INSERT INTO plays (user_id, video_id, title, artist_id, artist_name, completion, liked) VALUES (?,?,?,?,?,?,?)',
-        (user_id, video_id, title, artist_id, artist_name, completion, 1 if liked else 0),
+        'INSERT INTO plays (user_id, video_id, title, artist_id, artist_name, completion, liked, superliked) VALUES (?,?,?,?,?,?,?,?)',
+        (user_id, video_id, title, artist_id, artist_name, completion, 1 if liked else 0, 1 if superliked else 0),
     )
     if artist_id:
-        if liked:
+        if superliked:
+            db.execute('''
+                INSERT INTO artist_scores (user_id, artist_id, artist_name, like_count, skip_count)
+                VALUES (?,?,?,4,0)
+                ON CONFLICT(user_id, artist_id) DO UPDATE SET
+                    like_count  = like_count + 4,
+                    artist_name = excluded.artist_name
+            ''', (user_id, artist_id, artist_name))
+        elif liked:
             db.execute('''
                 INSERT INTO artist_scores (user_id, artist_id, artist_name, like_count, skip_count)
                 VALUES (?,?,?,1,0)

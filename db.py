@@ -70,5 +70,9 @@ def init_db():
     conn.execute('CREATE INDEX IF NOT EXISTS idx_plays_video  ON plays(video_id)')
     conn.execute('CREATE INDEX IF NOT EXISTS idx_plays_artist ON plays(artist_id)')
     conn.execute('CREATE INDEX IF NOT EXISTS idx_plays_time   ON plays(played_at)')
+    try:
+        conn.execute('ALTER TABLE plays ADD COLUMN superliked INTEGER DEFAULT 0')
+    except Exception:
+        pass  # column already exists
     conn.commit()
     conn.close()

@@ -28,14 +28,19 @@
 
     <div class="controls">
       <button class="btn-start" id="btn-start">Start</button>
-      <button class="btn-prev"  id="btn-prev"  style="display:none">‹ Prev</button>
-      <button class="btn-pause" id="btn-pause" style="display:none">Pause</button>
-      <button class="btn-skip"  id="btn-skip"  style="display:none">Skip ›</button>
+      <button class="btn-prev"      id="btn-prev"      style="display:none">‹ Prev</button>
+      <button class="btn-pause"     id="btn-pause"     style="display:none">Pause</button>
+      <button class="btn-superlike" id="btn-superlike" style="display:none">♥</button>
+      <button class="btn-skip"      id="btn-skip"      style="display:none">Skip ›</button>
     </div>
 
     <div class="stats" id="stats"></div>
     <div class="trend-wrap" id="trend-wrap" style="display:none">
+      <div class="trend-label" id="trend-label"></div>
       <svg id="trend-svg"></svg>
+      <div class="skip-detail" id="skip-detail" style="display:none">
+        <svg id="skip-svg"></svg>
+      </div>
     </div>
   </div>
 

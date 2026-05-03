@@ -75,6 +75,9 @@ function playSong(song) {
   currentSong  = song;
   feedbackSent = false;
   adPlaying    = false;
+  const superBtn = document.getElementById('btn-superlike');
+  superBtn.classList.remove('superliked');
+  superBtn.disabled = false;
 
   updateUI(song);
   updateNavButtons();
@@ -220,10 +223,34 @@ function updateUI(song) {
   }
 }
 
+function sendSuperlike() {
+  if (!currentSong || feedbackSent) return;
+  feedbackSent = true;
+  const current  = player?.getCurrentTime?.() ?? 0;
+  const duration = player?.getDuration?.()    ?? 1;
+  const completion = duration > 0 ? current / duration : 1.0;
+  fetch('/api/superlike', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'X-User-ID': getUserId() },
+    body: JSON.stringify({
+      video_id:    currentSong.video_id,
+      title:       currentSong.title,
+      artist_name: currentSong.artist_name,
+      artist_id:   currentSong.artist_id,
+      completion,
+    }),
+  });
+  const btn = document.getElementById('btn-superlike');
+  btn.classList.add('superliked');
+  btn.disabled = true;
+  toast('Superliked ♥♥', '#1db954');
+}
+
 function setLoading(on) {
-  document.getElementById('btn-skip').disabled  = on;
-  document.getElementById('btn-pause').disabled = on;
-  document.getElementById('btn-prev').disabled  = on || historyIndex <= 0;
+  document.getElementById('btn-skip').disabled      = on;
+  document.getElementById('btn-pause').disabled     = on;
+  document.getElementById('btn-prev').disabled      = on || historyIndex <= 0;
+  document.getElementById('btn-superlike').disabled = on;
   if (on) document.getElementById('song-artist').textContent = 'Loading…';
 }
 
@@ -236,12 +263,16 @@ function setStatus(msg) {
   document.getElementById('song-artist').textContent = '';
 }
 
+let trendBuckets = [];
+let skipDetailOpen = false;
+
 async function drawTrend() {
   const res = await fetch('/api/trend', { headers: { 'X-User-ID': getUserId() } });
   const { buckets } = await res.json();
   const wrap = document.getElementById('trend-wrap');
   if (buckets.length < 2) { wrap.style.display = 'none'; return; }
 
+  trendBuckets = buckets;
   wrap.style.display = '';
   const W = 284, H = 44, pad = 4;
   const svg = document.getElementById('trend-svg');
@@ -255,12 +286,85 @@ async function drawTrend() {
   const trending = buckets.at(-1) >= buckets.at(-2);
   const color = trending ? '#1db954' : '#e05263';
 
+  renderTrendLabel(trending, color);
+
   svg.innerHTML = `
     <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2"
       stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
     <circle cx="${xs.at(-1)}" cy="${ys.at(-1)}" r="3" fill="${color}"/>
   `;
+
+  if (skipDetailOpen) drawSkipDetail();
 }
+
+function renderTrendLabel(trending, color) {
+  const label = document.getElementById('trend-label');
+  const arrow = skipDetailOpen ? '▾' : '▸';
+  label.style.color = color;
+  label.textContent = (trending ? '↑ Recommender improving' : '↓ Recommender needs more data') + `  ${arrow}`;
+}
+
+function drawSkipDetail() {
+  const buckets = trendBuckets;
+  if (buckets.length < 2) return;
+
+  const W = 284, H = 90;
+  const padL = 26, padR = 4, padT = 6, padB = 16;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+
+  const svg = document.getElementById('skip-svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+
+  const skipRates = buckets.map(v => 1 - v);
+  const slot = chartW / buckets.length;
+  const barW = Math.max(4, slot - 3);
+
+  const gridLines = [0, 0.5, 1].map(v => {
+    const y = padT + chartH * (1 - v);
+    return `
+      <line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#2a2a2a" stroke-width="1"/>
+      <text x="${padL - 4}" y="${y + 3}" text-anchor="end" font-size="8" fill="#555">${Math.round(v * 100)}%</text>
+    `;
+  }).join('');
+
+  const bars = skipRates.map((rate, i) => {
+    const barH = Math.max(1, rate * chartH);
+    const x = padL + i * slot + (slot - barW) / 2;
+    const y = padT + chartH - barH;
+    const color = rate > 0.5 ? '#e05263' : '#888';
+    return `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" fill="${color}" opacity="0.7" rx="1"/>`;
+  }).join('');
+
+  const xLabel = (i) => {
+    const n = (i + 1) * 5;
+    return `<text x="${padL + i * slot + slot / 2}" y="${H - 2}" text-anchor="middle" font-size="8" fill="#444">
+      ${n}
+    </text>`;
+  };
+  const step = buckets.length <= 6 ? 1 : Math.ceil(buckets.length / 6);
+  const xLabels = buckets.map((_, i) => (i % step === 0 ? xLabel(i) : '')).join('');
+
+  svg.innerHTML = gridLines + bars + xLabels;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('trend-label').addEventListener('click', () => {
+    skipDetailOpen = !skipDetailOpen;
+    const detail = document.getElementById('skip-detail');
+    if (skipDetailOpen) {
+      detail.style.display = '';
+      drawSkipDetail();
+    } else {
+      detail.style.display = 'none';
+    }
+    const trending = trendBuckets.length >= 2 && trendBuckets.at(-1) >= trendBuckets.at(-2);
+    const color = trending ? '#1db954' : '#e05263';
+    renderTrendLabel(trending, color);
+  });
+});
 
 async function refreshStats() {
   const res  = await fetch('/api/stats', { headers: { 'X-User-ID': getUserId() } });
@@ -284,16 +388,18 @@ function toast(msg, color = '#fff') {
 // ── Startup ───────────────────────────────────────────────────────────────────
 
 document.getElementById('btn-start').addEventListener('click', () => {
-  document.getElementById('btn-start').style.display = 'none';
-  document.getElementById('btn-prev').style.display  = '';
-  document.getElementById('btn-pause').style.display = '';
-  document.getElementById('btn-skip').style.display  = '';
+  document.getElementById('btn-start').style.display     = 'none';
+  document.getElementById('btn-prev').style.display      = '';
+  document.getElementById('btn-pause').style.display     = '';
+  document.getElementById('btn-superlike').style.display = '';
+  document.getElementById('btn-skip').style.display      = '';
   loadNextSong();
 });
 
 document.getElementById('btn-prev').addEventListener('click', previousSong);
 document.getElementById('btn-skip').addEventListener('click', skipSong);
 document.getElementById('btn-pause').addEventListener('click', togglePause);
+document.getElementById('btn-superlike').addEventListener('click', sendSuperlike);
 
 document.addEventListener('keydown', (e) => {
   if (!currentSong) return;

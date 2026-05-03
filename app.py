@@ -43,6 +43,22 @@ def feedback():
     return jsonify({'ok': True})
 
 
+@app.route('/api/superlike', methods=['POST'])
+def superlike():
+    d = request.json
+    record_feedback(
+        user_id     = get_user_id(),
+        video_id    = d['video_id'],
+        title       = d.get('title'),
+        artist_name = d.get('artist_name'),
+        artist_id   = d.get('artist_id'),
+        completion  = d.get('completion', 1.0),
+        liked       = True,
+        superliked  = True,
+    )
+    return jsonify({'ok': True})
+
+
 @app.route('/api/stats')
 def stats():
     user_id = get_user_id()

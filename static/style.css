@@ -146,6 +146,22 @@ body {
 .btn-prev:hover { border-color: #888; color: #fff; }
 .btn-prev:disabled { opacity: 0.35; cursor: default; transform: none; }
 
+.btn-superlike {
+  background: transparent;
+  border: 1.5px solid #3a3a3a;
+  color: #888;
+  padding: 11px 15px;
+  font-size: 16px;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: transform 0.12s, background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.btn-superlike:hover { border-color: #1db954; color: #1db954; }
+.btn-superlike:disabled { opacity: 0.35; cursor: default; transform: none; }
+.btn-superlike.superliked { color: #1db954; border-color: #1db954; }
+.btn-superlike:active { transform: scale(1.2); }
+
 /* ── Stats ── */
 .stats {
   font-size: 11px;
@@ -159,6 +175,23 @@ body {
 .trend-wrap {
   margin-top: 10px;
   opacity: 0.75;
+}
+
+.trend-label {
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  margin-bottom: 3px;
+  cursor: pointer;
+  user-select: none;
+  display: inline-block;
+}
+
+.trend-label:hover { opacity: 0.85; }
+
+.skip-detail {
+  margin-top: 6px;
+  border-top: 1px solid #2a2a2a;
+  padding-top: 6px;
 }
 
 /* ── Toast ── */
