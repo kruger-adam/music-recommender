@@ -133,6 +133,18 @@ function skipSong() {
   loadNextSong();
 }
 
+function togglePause() {
+  if (!player) return;
+  const btn = document.getElementById('btn-pause');
+  if (player.getPlayerState() === YT.PlayerState.PLAYING) {
+    player.pauseVideo();
+    btn.textContent = 'Resume';
+  } else if (player.getPlayerState() === YT.PlayerState.PAUSED) {
+    player.playVideo();
+    btn.textContent = 'Pause';
+  }
+}
+
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
 function startProgress() {
@@ -177,7 +189,8 @@ function updateUI(song) {
 }
 
 function setLoading(on) {
-  document.getElementById('btn-skip').disabled = on;
+  document.getElementById('btn-skip').disabled  = on;
+  document.getElementById('btn-pause').disabled = on;
   if (on) document.getElementById('song-artist').textContent = 'Loading…';
 }
 
@@ -210,10 +223,12 @@ function toast(msg, color = '#fff') {
 document.getElementById('btn-start').addEventListener('click', () => {
   document.getElementById('btn-start').style.display = 'none';
   document.getElementById('btn-skip').style.display  = '';
+  document.getElementById('btn-pause').style.display = '';
   loadNextSong();
 });
 
 document.getElementById('btn-skip').addEventListener('click', skipSong);
+document.getElementById('btn-pause').addEventListener('click', togglePause);
 
 // Inject YouTube IFrame API script
 const ytScript = document.createElement('script');
