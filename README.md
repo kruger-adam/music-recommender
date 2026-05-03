@@ -1,15 +1,16 @@
 # Smart Shuffle
 
-A self-learning YouTube Music player. Skip a song to train it away; let one play to train it toward you. Gets better over time.
+A self-learning YouTube Music player. The more you use it, the better it knows your taste.
 
 **Live:** [smart-shuffle.vercel.app](https://smart-shuffle.vercel.app)
 
 ## How it works
 
 - Fetches songs from YouTube Music via `ytmusicapi`
-- Tracks every play, skip, and like in a Turso (SQLite) database
-- Scores artists based on like/skip history and weights future picks accordingly
-- Cold-starts with curated seed queries; switches to watch-playlist recommendations once you have liked songs
+- Tracks every play in a Turso (SQLite) database, recording how much of each song you listened to
+- Scores artists using a graded completion signal — skipping at 5% vs 75% are treated differently; letting a song play through scores highest
+- Superliking a song (♥) gives the artist a 4x stronger boost and seeds future recommendations from that song first
+- Cold-starts with curated seed queries; once you have liked songs, pulls candidates from up to 3 liked songs' YouTube watch-next playlists simultaneously, then re-ranks by your artist scores
 
 ## Stack
 
