@@ -10,6 +10,7 @@ A self-learning YouTube Music player. The more you use it, the better it knows y
 - Tracks every play in a Turso (SQLite) database, recording how much of each song you listened to
 - Scores artists using a graded completion signal — skipping at 5% vs 75% are treated differently; letting a song play through scores highest
 - Superliking a song (♥) gives the artist a 4x stronger boost and seeds future recommendations from that song first
+- After skipping, an optional chip row lets you tag why (Wrong genre / Not this artist / Not the mood / Overplayed) — stored for future algorithm improvements
 - Cold-starts with curated seed queries; once you have liked songs, pulls candidates from up to 3 liked songs' YouTube watch-next playlists simultaneously, then re-ranks by your artist scores
 
 ## Stack
