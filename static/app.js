@@ -392,36 +392,39 @@ function toast(msg, color = '#fff') {
 
 // ── Skip reason ───────────────────────────────────────────────────────────────
 
-const SECONDARY_CHIPS = {
-  wrong_genre: {
-    label: 'What genre?',
-    chips: [
-      { label: 'Pop',        seed: 'pop' },
-      { label: 'Rock',       seed: 'rock' },
-      { label: 'Country',    seed: 'country' },
-      { label: 'R&B',        seed: 'r&b' },
-      { label: 'Hip-hop',    seed: 'hip-hop' },
-      { label: 'Electronic', seed: 'electronic' },
-      { label: 'Jazz',       seed: 'jazz' },
-      { label: 'Folk',       seed: 'folk' },
-      { label: 'Latin',      seed: 'latin' },
-      { label: 'Reggae',     seed: 'reggae' },
-    ],
-  },
-  not_mood: {
-    label: 'More or less energy?',
-    chips: [
-      { label: 'More energy', seed: 'more_energy' },
-      { label: 'Less energy', seed: 'less_energy' },
-    ],
-  },
+const GENRE_CHIPS = [
+  { label: 'Pop',        key: 'pop' },
+  { label: 'Rock',       key: 'rock' },
+  { label: 'Country',    key: 'country' },
+  { label: 'R&B',        key: 'rnb' },
+  { label: 'Hip-hop',    key: 'hiphop' },
+  { label: 'Electronic', key: 'electronic' },
+  { label: 'Jazz',       key: 'jazz' },
+  { label: 'Folk',       key: 'folk' },
+  { label: 'Latin',      key: 'latin' },
+  { label: 'Reggae',     key: 'reggae' },
+];
+
+const GENRE_SUBSTYLES = {
+  pop:        { label: 'What style of Pop?',        chips: [{ label: '80s Pop',      seed: 'pop_80s' }, { label: '90s Pop',   seed: 'pop_90s' }, { label: '2000s Pop',  seed: 'pop_2000s' }, { label: 'Indie Pop',    seed: 'pop_indie' }] },
+  rock:       { label: 'What style of Rock?',       chips: [{ label: 'Classic Rock', seed: 'rock_classic' }, { label: '80s Rock',  seed: 'rock_80s' }, { label: '90s Alt',    seed: 'rock_alternative' }, { label: 'Hard Rock',    seed: 'rock_hard' }, { label: 'Indie Rock', seed: 'rock_indie' }] },
+  country:    { label: 'What style of Country?',    chips: [{ label: 'Classic',      seed: 'country_classic' }, { label: '90s',    seed: 'country_90s' }, { label: 'Country Pop', seed: 'country_pop' }, { label: 'New Country',  seed: 'country_new' }, { label: 'Bluegrass', seed: 'country_bluegrass' }] },
+  rnb:        { label: 'What style of R&B?',        chips: [{ label: 'Motown',       seed: 'rnb_motown' }, { label: '70s Soul',  seed: 'rnb_soul' }, { label: '90s R&B',    seed: 'rnb_90s' }, { label: '2000s R&B',    seed: 'rnb_2000s' }] },
+  hiphop:     { label: 'What style of Hip-hop?',    chips: [{ label: '90s',          seed: 'hiphop_90s' }, { label: '2000s',     seed: 'hiphop_2000s' }, { label: 'Trap',      seed: 'hiphop_trap' }, { label: 'Old School',   seed: 'hiphop_oldschool' }] },
+  electronic: { label: 'What style of Electronic?', chips: [{ label: '90s Dance',    seed: 'electronic_90s' }, { label: 'Euro Dance', seed: 'electronic_euro' }, { label: 'EDM',    seed: 'electronic_edm' }, { label: 'House',        seed: 'electronic_house' }, { label: 'Synthwave', seed: 'electronic_synth' }] },
+  jazz:       { label: 'What style of Jazz?',       chips: [{ label: 'Standards',    seed: 'jazz_standards' }, { label: 'Smooth',  seed: 'jazz_smooth' }, { label: 'Bebop',     seed: 'jazz_bebop' }, { label: 'Swing',        seed: 'jazz_swing' }] },
+  folk:       { label: 'What style of Folk?',       chips: [{ label: 'Folk',         seed: 'folk_classic' }, { label: 'Americana', seed: 'folk_americana' }, { label: 'Singer-Songwriter', seed: 'folk_singersong' }] },
+  latin:      { label: 'What style of Latin?',      chips: [{ label: 'Latin Pop',    seed: 'latin_pop' }, { label: 'Reggaeton', seed: 'latin_reggaeton' }, { label: 'Salsa',    seed: 'latin_salsa' }, { label: 'Bossa Nova',   seed: 'latin_bossa' }] },
+  reggae:     { label: 'What style of Reggae?',     chips: [{ label: 'Reggae',       seed: 'reggae_classic' }, { label: 'Ska',   seed: 'reggae_ska' }, { label: 'Dancehall',  seed: 'reggae_dancehall' }] },
 };
 
 let pendingPrimaryReason = null;
+let pendingGenreKey       = null;
 
 function showSkipReason(videoId) {
   skipReasonId         = videoId;
   pendingPrimaryReason = null;
+  pendingGenreKey      = null;
   clearTimeout(skipReasonTimer);
   document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
   document.getElementById('skip-reason-secondary').style.display = 'none';
@@ -434,6 +437,7 @@ function hideSkipReason() {
   document.getElementById('skip-reason-secondary').style.display = 'none';
   skipReasonId         = null;
   pendingPrimaryReason = null;
+  pendingGenreKey      = null;
 }
 
 function sendSkipReason(reason) {
@@ -447,25 +451,43 @@ function sendSkipReason(reason) {
 }
 
 function showSecondary(primaryReason) {
-  const config = SECONDARY_CHIPS[primaryReason];
-  if (!config) return;
   pendingPrimaryReason = primaryReason;
-  document.getElementById('skip-reason-secondary-label').textContent = config.label;
-  const container = document.getElementById('skip-reason-secondary-chips');
-  container.innerHTML = '';
-  config.chips.forEach(({ label, seed }) => {
-    const btn = document.createElement('button');
-    btn.className   = 'chip';
-    btn.textContent = label;
-    btn.addEventListener('click', () => handleSecondaryChip(seed));
-    container.appendChild(btn);
-  });
+  pendingGenreKey      = null;
+  if (primaryReason === 'wrong_genre') {
+    renderSecondaryChips('What genre?', GENRE_CHIPS, ({ key }) => showTertiary(key));
+  } else if (primaryReason === 'not_mood') {
+    renderSecondaryChips('More or less energy?', [
+      { label: 'More energy', key: 'more_energy' },
+      { label: 'Less energy', key: 'less_energy' },
+    ], ({ key }) => selectSeed(key));
+  }
   document.getElementById('skip-reason-secondary').style.display = '';
 }
 
-function handleSecondaryChip(seed) {
-  sendSkipReason(`${pendingPrimaryReason}:${seed}`);
-  sendFeedback(0, false); // skip current song if feedback not yet sent
+function showTertiary(genreKey) {
+  pendingGenreKey = genreKey;
+  const config = GENRE_SUBSTYLES[genreKey];
+  if (!config) return;
+  renderSecondaryChips(config.label, config.chips, ({ seed }) => selectSeed(seed));
+}
+
+function renderSecondaryChips(label, chips, onClick) {
+  document.getElementById('skip-reason-secondary-label').textContent = label;
+  const container = document.getElementById('skip-reason-secondary-chips');
+  container.innerHTML = '';
+  chips.forEach(chip => {
+    const btn = document.createElement('button');
+    btn.className   = 'chip';
+    btn.textContent = chip.label;
+    btn.addEventListener('click', () => onClick(chip));
+    container.appendChild(btn);
+  });
+}
+
+function selectSeed(seed) {
+  const parts = [pendingPrimaryReason, pendingGenreKey, seed].filter(Boolean);
+  sendSkipReason(parts.join(':'));
+  sendFeedback(0, false);
   loadSeededSong(seed);
 }
 
@@ -489,7 +511,7 @@ async function loadSeededSong(seed) {
   }
 }
 
-document.querySelectorAll('.chip').forEach(btn => {
+document.querySelectorAll('.chip[data-reason]').forEach(btn => {
   btn.addEventListener('click', () => {
     btn.classList.add('selected');
     const reason = btn.dataset.reason;

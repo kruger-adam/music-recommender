@@ -28,18 +28,60 @@ SEED_QUERIES = [
 COLD_INJECT_RATE = 0.20  # 1 in 5 songs explores a new genre
 
 GENRE_SEEDS = {
-    'pop':         ['80s pop hits', '90s pop hits', '2000s pop hits', '2010s pop hits'],
-    'rock':        ['classic rock hits', '80s rock hits', '90s alternative rock', '70s classic rock'],
-    'country':     ['classic country hits', '90s country hits', '2000s country hits'],
-    'r&b':         ['motown hits', '70s soul hits', '90s r&b hits', '2000s r&b hits'],
-    'hip-hop':     ['90s hip hop hits', '2000s hip hop hits', 'classic rap hits'],
-    'electronic':  ['90s dance hits', '2000s euro dance hits', 'classic edm hits'],
-    'jazz':        ['jazz standards'],
-    'folk':        ['folk hits'],
-    'latin':       ['latin pop hits'],
-    'reggae':      ['reggae hits'],
-    'more_energy': ['2000s dance pop hits', '90s dance hits', '80s rock hits', '2000s euro dance hits'],
-    'less_energy': ['jazz standards', 'folk hits', '70s soul hits', 'classic blues hits'],
+    # Pop
+    'pop_80s':            ['80s pop hits'],
+    'pop_90s':            ['90s pop hits'],
+    'pop_2000s':          ['2000s pop hits'],
+    'pop_indie':          ['indie pop hits'],
+    # Rock
+    'rock_classic':       ['classic rock hits', '70s classic rock'],
+    'rock_80s':           ['80s rock hits'],
+    'rock_alternative':   ['90s alternative rock'],
+    'rock_hard':          ['hard rock hits'],
+    'rock_indie':         ['indie rock hits'],
+    # Country
+    'country_classic':    ['classic country hits'],
+    'country_90s':        ['90s country hits'],
+    'country_pop':        ['country pop hits'],
+    'country_new':        ['new country hits Zach Bryan Morgan Wallen'],
+    'country_bluegrass':  ['bluegrass hits'],
+    # R&B
+    'rnb_motown':         ['motown hits'],
+    'rnb_soul':           ['70s soul hits'],
+    'rnb_90s':            ['90s r&b hits'],
+    'rnb_2000s':          ['2000s r&b hits'],
+    # Hip-hop
+    'hiphop_90s':         ['90s hip hop hits'],
+    'hiphop_2000s':       ['2000s hip hop hits'],
+    'hiphop_trap':        ['trap music hits'],
+    'hiphop_oldschool':   ['old school rap hits'],
+    # Electronic
+    'electronic_90s':     ['90s dance hits'],
+    'electronic_euro':    ['2000s euro dance hits'],
+    'electronic_edm':     ['classic edm hits'],
+    'electronic_house':   ['house music hits'],
+    'electronic_synth':   ['synthwave hits'],
+    # Jazz
+    'jazz_standards':     ['jazz standards'],
+    'jazz_smooth':        ['smooth jazz hits'],
+    'jazz_bebop':         ['bebop jazz'],
+    'jazz_swing':         ['swing jazz hits'],
+    # Folk
+    'folk_classic':       ['folk hits'],
+    'folk_americana':     ['americana music hits'],
+    'folk_singersong':    ['singer songwriter hits'],
+    # Latin
+    'latin_pop':          ['latin pop hits'],
+    'latin_reggaeton':    ['reggaeton hits'],
+    'latin_salsa':        ['salsa hits'],
+    'latin_bossa':        ['bossa nova hits'],
+    # Reggae
+    'reggae_classic':     ['reggae hits'],
+    'reggae_ska':         ['ska hits'],
+    'reggae_dancehall':   ['dancehall hits'],
+    # Energy (from not_mood)
+    'more_energy':        ['2000s dance pop hits', '90s dance hits', '80s rock hits', '2000s euro dance hits'],
+    'less_energy':        ['jazz standards', 'folk hits', '70s soul hits', 'classic blues hits'],
 }
 
 
