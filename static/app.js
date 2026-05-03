@@ -1,10 +1,11 @@
 const LIKE_THRESHOLD = 0.80; // played ≥80% → liked
 
-let player       = null;
-let ytApiReady   = false;
-let currentSong  = null;
-let feedbackSent = false;
+let player        = null;
+let ytApiReady    = false;
+let currentSong   = null;
+let feedbackSent  = false;
 let progressTimer = null;
+let adPlaying     = false;
 
 // ── YouTube IFrame API ────────────────────────────────────────────────────────
 
@@ -26,10 +27,31 @@ function initPlayer(videoId) {
 }
 
 function handleStateChange(e) {
+  if (e.data === YT.PlayerState.PLAYING) {
+    const playingId = player.getVideoData()?.video_id;
+    if (playingId && currentSong && playingId !== currentSong.video_id) {
+      // ad detected
+      if (!adPlaying) {
+        adPlaying = true;
+        clearInterval(progressTimer);
+        document.getElementById('btn-skip').disabled = true;
+        document.getElementById('song-artist').textContent = 'Ad playing…';
+      }
+    } else if (adPlaying) {
+      // ad finished, song starting
+      adPlaying = false;
+      document.getElementById('btn-skip').disabled = false;
+      updateUI(currentSong);
+      startProgress();
+    }
+  }
+
   if (e.data === YT.PlayerState.ENDED) {
-    if (!feedbackSent) sendFeedback(1.0, true);
-    toast('Liked ♥', '#1db954');
-    loadNextSong();
+    if (!adPlaying) {
+      if (!feedbackSent) sendFeedback(1.0, true);
+      toast('Liked ♥', '#1db954');
+      loadNextSong();
+    }
   }
 }
 
@@ -50,6 +72,7 @@ async function loadNextSong() {
 
     currentSong  = song;
     feedbackSent = false;
+    adPlaying    = false;
 
     updateUI(song);
 
