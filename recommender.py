@@ -164,7 +164,7 @@ def _warm_candidates(liked_ids):
     return candidates
 
 
-def get_next_song(user_id, seed=None):
+def get_next_song(user_id, seed=None, artist=None):
     db = get_db()
     superliked = db.execute(
         'SELECT video_id FROM plays WHERE user_id=? AND superliked=1 ORDER BY played_at DESC LIMIT 10',
@@ -179,7 +179,15 @@ def get_next_song(user_id, seed=None):
     superliked_ids = [r['video_id'] for r in superliked]
     liked_ids      = [r['video_id'] for r in liked]
     seed_ids       = superliked_ids if superliked_ids else liked_ids
-    if seed and seed in GENRE_SEEDS:
+    if artist:
+        try:
+            results = yt.search(artist, filter='songs', limit=25)
+            candidates = [s for s in (_parse_song(r) for r in results) if s]
+        except Exception:
+            candidates = []
+        if not candidates:
+            candidates = _cold_candidates()
+    elif seed and seed in GENRE_SEEDS:
         candidates = _cold_candidates(random.choice(GENRE_SEEDS[seed]))
     elif not seed_ids or random.random() < COLD_INJECT_RATE:
         candidates = _cold_candidates() or (_warm_candidates(seed_ids) if seed_ids else [])

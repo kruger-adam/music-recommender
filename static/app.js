@@ -15,8 +15,9 @@ let progressTimer    = null;
 let adPlaying        = false;
 let songHistory      = [];
 let historyIndex     = -1;
-let skipReasonId     = null;
-let skipReasonTimer  = null;
+let skipReasonId       = null;
+let skipReasonArtistId = null;
+let skipReasonTimer    = null;
 
 // ── YouTube IFrame API ────────────────────────────────────────────────────────
 
@@ -170,9 +171,10 @@ function skipSong() {
   const liked    = ratio >= LIKE_THRESHOLD;
   sendFeedback(ratio, liked);
   toast(liked ? 'Liked ♥' : 'Skipped', liked ? '#1db954' : '#888');
-  const skippedId = currentSong.video_id;
+  const skippedId       = currentSong.video_id;
+  const skippedArtistId = currentSong.artist_id;
   loadNextSong();
-  if (!liked) showSkipReason(skippedId);
+  if (!liked) showSkipReason(skippedId, skippedArtistId);
 }
 
 function togglePause() {
@@ -421,8 +423,9 @@ const GENRE_SUBSTYLES = {
 let pendingPrimaryReason = null;
 let pendingGenreKey       = null;
 
-function showSkipReason(videoId) {
+function showSkipReason(videoId, artistId) {
   skipReasonId         = videoId;
+  skipReasonArtistId   = artistId || null;
   pendingPrimaryReason = null;
   pendingGenreKey      = null;
   clearTimeout(skipReasonTimer);
@@ -436,6 +439,7 @@ function hideSkipReason() {
   document.getElementById('skip-reason-panel').style.display = 'none';
   document.getElementById('skip-reason-secondary').style.display = 'none';
   skipReasonId         = null;
+  skipReasonArtistId   = null;
   pendingPrimaryReason = null;
   pendingGenreKey      = null;
 }
@@ -488,15 +492,20 @@ function selectSeed(seed) {
   const parts = [pendingPrimaryReason, pendingGenreKey, seed].filter(Boolean);
   sendSkipReason(parts.join(':'));
   sendFeedback(0, false);
-  loadSeededSong(seed);
+  loadNextSongWith({ seed });
 }
 
-async function loadSeededSong(seed) {
+function selectArtist(artistName) {
+  sendSkipReason(`not_artist:${artistName}`);
+  sendFeedback(0, false);
+  loadNextSongWith({ artist: artistName });
+}
+
+async function loadNextSongWith(params) {
   setLoading(true);
   try {
-    const res  = await fetch(`/api/next?seed=${encodeURIComponent(seed)}`, {
-      headers: { 'X-User-ID': getUserId() },
-    });
+    const url  = '/api/next?' + new URLSearchParams(params);
+    const res  = await fetch(url, { headers: { 'X-User-ID': getUserId() } });
     const song = await res.json();
     if (song.error) throw new Error(song.error);
     songHistory.push(song);
@@ -505,9 +514,33 @@ async function loadSeededSong(seed) {
     refreshStats();
     drawTrend();
   } catch (err) {
-    console.error('loadSeededSong failed:', err);
+    console.error('loadNextSongWith failed:', err);
   } finally {
     setLoading(false);
+  }
+}
+
+async function showSimilarArtists() {
+  pendingPrimaryReason = 'not_artist';
+  document.getElementById('skip-reason-secondary-label').textContent = 'Similar artists:';
+  const container = document.getElementById('skip-reason-secondary-chips');
+  container.innerHTML = '<span class="chip-loading">Loading…</span>';
+  document.getElementById('skip-reason-secondary').style.display = '';
+  try {
+    const params = new URLSearchParams({ video_id: skipReasonId });
+    if (skipReasonArtistId) params.set('exclude_artist', skipReasonArtistId);
+    const { artists } = await fetch(`/api/similar-artists?${params}`).then(r => r.json());
+    if (!artists.length) {
+      container.innerHTML = '';
+      return;
+    }
+    renderSecondaryChips(
+      'Similar artists:',
+      artists.map(a => ({ label: a.name, key: a.name })),
+      ({ key }) => selectArtist(key)
+    );
+  } catch {
+    container.innerHTML = '';
   }
 }
 
@@ -517,6 +550,8 @@ document.querySelectorAll('.chip[data-reason]').forEach(btn => {
     const reason = btn.dataset.reason;
     if (reason === 'wrong_genre' || reason === 'not_mood') {
       showSecondary(reason);
+    } else if (reason === 'not_artist') {
+      showSimilarArtists();
     } else {
       sendSkipReason(reason);
     }

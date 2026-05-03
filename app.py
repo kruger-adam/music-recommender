@@ -22,11 +22,40 @@ def static_files(path):
 
 @app.route('/api/next')
 def next_song():
-    seed = request.args.get('seed')
-    song = get_next_song(get_user_id(), seed=seed)
+    seed   = request.args.get('seed')
+    artist = request.args.get('artist')
+    song   = get_next_song(get_user_id(), seed=seed, artist=artist)
     if song:
         return jsonify(song)
     return jsonify({'error': 'No songs found'}), 503
+
+
+@app.route('/api/similar-artists')
+def similar_artists():
+    video_id       = request.args.get('video_id')
+    exclude_artist = request.args.get('exclude_artist', '')
+    if not video_id:
+        return jsonify({'artists': []})
+    try:
+        from recommender import yt
+        watch = yt.get_watch_playlist(videoId=video_id, limit=25)
+        seen, artists = set(), []
+        for track in watch.get('tracks', []):
+            track_artists = track.get('artists') or []
+            if not track_artists:
+                continue
+            a    = track_artists[0]
+            name = (a.get('name') or '').strip()
+            aid  = a.get('id') or ''
+            if not name or name in seen or aid == exclude_artist:
+                continue
+            seen.add(name)
+            artists.append({'name': name, 'id': aid})
+            if len(artists) >= 6:
+                break
+        return jsonify({'artists': artists})
+    except Exception:
+        return jsonify({'artists': []})
 
 
 @app.route('/api/feedback', methods=['POST'])

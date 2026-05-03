@@ -206,6 +206,11 @@ body {
   animation: fadeIn 0.15s ease;
 }
 
+.chip-loading {
+  font-size: 11px;
+  color: #444;
+}
+
 /* ── Stats ── */
 .stats {
   font-size: 11px;
