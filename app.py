@@ -65,5 +65,27 @@ def stats():
     })
 
 
+@app.route('/api/trend')
+def trend():
+    user_id = get_user_id()
+    db = get_db()
+    rows = db.execute('''
+        SELECT liked FROM plays
+        WHERE user_id=? AND liked IS NOT NULL
+        ORDER BY played_at DESC
+        LIMIT 50
+    ''', (user_id,)).fetchall()
+    db.close()
+    rows = rows[::-1]  # oldest first
+    bucket_size = 5
+    buckets = []
+    for i in range(0, len(rows), bucket_size):
+        chunk = rows[i:i+bucket_size]
+        if len(chunk) < bucket_size:
+            break  # skip incomplete last bucket
+        buckets.append(round(sum(r['liked'] for r in chunk) / bucket_size, 2))
+    return jsonify({'buckets': buckets})
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

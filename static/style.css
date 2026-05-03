@@ -141,6 +141,12 @@ body {
 
 .stats span { color: #666; }
 
+/* ── Trend sparkline ── */
+.trend-wrap {
+  margin-top: 10px;
+  opacity: 0.75;
+}
+
 /* ── Toast ── */
 .toast {
   position: fixed;

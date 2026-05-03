@@ -94,6 +94,7 @@ async function loadNextSong() {
 
     startProgress();
     refreshStats();
+    drawTrend();
   } catch (err) {
     console.error('loadNextSong failed:', err);
     setStatus('Error loading song — retrying…');
@@ -197,6 +198,32 @@ function setLoading(on) {
 function setStatus(msg) {
   document.getElementById('song-title').textContent  = msg;
   document.getElementById('song-artist').textContent = '';
+}
+
+async function drawTrend() {
+  const res = await fetch('/api/trend', { headers: { 'X-User-ID': getUserId() } });
+  const { buckets } = await res.json();
+  const wrap = document.getElementById('trend-wrap');
+  if (buckets.length < 2) { wrap.style.display = 'none'; return; }
+
+  wrap.style.display = '';
+  const W = 284, H = 44, pad = 4;
+  const svg = document.getElementById('trend-svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+
+  const xs = buckets.map((_, i) => pad + i * (W - 2 * pad) / (buckets.length - 1));
+  const ys = buckets.map(v => H - pad - v * (H - 2 * pad));
+  const pts = xs.map((x, i) => `${x},${ys[i]}`).join(' ');
+  const trending = buckets.at(-1) >= buckets.at(-2);
+  const color = trending ? '#1db954' : '#e05263';
+
+  svg.innerHTML = `
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2"
+      stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
+    <circle cx="${xs.at(-1)}" cy="${ys.at(-1)}" r="3" fill="${color}"/>
+  `;
 }
 
 async function refreshStats() {
