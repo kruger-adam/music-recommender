@@ -8,16 +8,21 @@ LIKE_THRESHOLD = 0.80   # played ≥80% → liked
 RECENT_WINDOW  = 50     # don't repeat last N played songs
 
 SEED_QUERIES = [
-    "90s euro pop hits",
-    "2000s dance pop hits",
-    "80s pop hits",
-    "classic rock hits Rolling Stones Beatles",
-    "70s classic rock",
-    "90s country hits",
-    "classic country hits",
-    "r&b hits 2000s",
-    "indie pop hits",
-    "alternative rock 90s",
+    # Pop
+    "80s pop hits", "90s pop hits", "2000s pop hits", "2010s pop hits",
+    # Rock
+    "70s classic rock", "80s rock hits", "90s alternative rock", "classic rock hits",
+    # Country
+    "classic country hits", "90s country hits", "2000s country hits",
+    # R&B / Soul
+    "motown hits", "70s soul hits", "90s r&b hits", "2000s r&b hits",
+    # Hip-hop
+    "90s hip hop hits", "2000s hip hop hits", "classic rap hits",
+    # Electronic / Dance
+    "90s dance hits", "2000s euro dance hits", "classic edm hits",
+    # Other
+    "80s new wave hits", "60s hits", "jazz standards", "classic blues hits",
+    "reggae hits", "latin pop hits", "folk hits",
 ]
 
 COLD_INJECT_RATE = 0.20  # 1 in 5 songs explores a new genre
