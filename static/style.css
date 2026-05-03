@@ -104,7 +104,12 @@ body {
   font-weight: 600;
   cursor: pointer;
   padding: 11px 36px;
+  white-space: nowrap;
   transition: transform 0.12s, background 0.12s;
+}
+
+.btn-prev, .btn-pause, .btn-skip {
+  padding: 11px 18px;
 }
 
 .btn-start {
