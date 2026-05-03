@@ -77,15 +77,18 @@ def _cold_candidates():
 
 def _warm_candidates(liked_ids):
     candidates = []
-    seed = random.choice(liked_ids)
-    try:
-        watch = yt.get_watch_playlist(videoId=seed, limit=25)
-        for t in watch.get('tracks', []):
-            s = _parse_song(t)
-            if s and s['video_id'] != seed:
-                candidates.append(s)
-    except Exception:
-        pass
+    seen = set()
+    seeds = random.sample(liked_ids, min(3, len(liked_ids)))
+    for seed in seeds:
+        try:
+            watch = yt.get_watch_playlist(videoId=seed, limit=25)
+            for t in watch.get('tracks', []):
+                s = _parse_song(t)
+                if s and s['video_id'] not in seen:
+                    seen.add(s['video_id'])
+                    candidates.append(s)
+        except Exception:
+            pass
     if len(candidates) < 10:
         candidates += _cold_candidates()
     return candidates
@@ -133,21 +136,16 @@ def record_feedback(user_id, video_id, title, artist_name, artist_id, completion
                     like_count  = like_count + 4,
                     artist_name = excluded.artist_name
             ''', (user_id, artist_id, artist_name))
-        elif liked:
-            db.execute('''
-                INSERT INTO artist_scores (user_id, artist_id, artist_name, like_count, skip_count)
-                VALUES (?,?,?,1,0)
-                ON CONFLICT(user_id, artist_id) DO UPDATE SET
-                    like_count  = like_count + 1,
-                    artist_name = excluded.artist_name
-            ''', (user_id, artist_id, artist_name))
         else:
+            like_weight = round(completion, 4)
+            skip_weight = round(1.0 - completion, 4)
             db.execute('''
                 INSERT INTO artist_scores (user_id, artist_id, artist_name, like_count, skip_count)
-                VALUES (?,?,?,0,1)
+                VALUES (?,?,?,?,?)
                 ON CONFLICT(user_id, artist_id) DO UPDATE SET
-                    skip_count  = skip_count + 1,
+                    like_count  = like_count + ?,
+                    skip_count  = skip_count + ?,
                     artist_name = excluded.artist_name
-            ''', (user_id, artist_id, artist_name))
+            ''', (user_id, artist_id, artist_name, like_weight, skip_weight, like_weight, skip_weight))
     db.commit()
     db.close()
