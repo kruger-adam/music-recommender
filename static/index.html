@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Music Recommender</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="player">
+    <div class="art-wrap">
+      <div class="art-placeholder" id="art-placeholder">🎵</div>
+      <img id="album-art" class="hidden" alt="Album art">
+    </div>
+
+    <div class="song-title" id="song-title">Ready to play</div>
+    <div class="song-artist" id="song-artist">Hit Start to begin</div>
+
+    <div class="progress-wrap">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+      <div class="time-row">
+        <span id="time-current">0:00</span>
+        <span id="time-total">0:00</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn-start" id="btn-start">Start</button>
+      <button class="btn-skip"  id="btn-skip"  style="display:none">Skip ›</button>
+    </div>
+
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <div id="yt-wrap"><div id="yt-player"></div></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
