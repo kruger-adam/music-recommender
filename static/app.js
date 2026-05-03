@@ -61,6 +61,7 @@ function handleStateChange(e) {
     if (!adPlaying) {
       if (!feedbackSent) sendFeedback(1.0, true);
       if (!superlikedSent) toast('Liked ♥', '#1db954');
+      hideSkipReason();
       loadNextSong();
     }
   }
@@ -79,7 +80,6 @@ function playSong(song) {
   feedbackSent    = false;
   superlikedSent  = false;
   adPlaying       = false;
-  hideSkipReason();
   const superBtn = document.getElementById('btn-superlike');
   superBtn.classList.remove('superliked');
   superBtn.disabled = false;
