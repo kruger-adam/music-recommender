@@ -12,6 +12,8 @@ let currentSong   = null;
 let feedbackSent  = false;
 let progressTimer = null;
 let adPlaying     = false;
+let songHistory   = [];
+let historyIndex  = -1;
 
 // ── YouTube IFrame API ────────────────────────────────────────────────────────
 
@@ -69,30 +71,46 @@ function handleError(e) {
 
 // ── Song loading ──────────────────────────────────────────────────────────────
 
+function playSong(song) {
+  currentSong  = song;
+  feedbackSent = false;
+  adPlaying    = false;
+
+  updateUI(song);
+  updateNavButtons();
+
+  if (!player) {
+    const ready = () => ytApiReady
+      ? initPlayer(song.video_id)
+      : setTimeout(ready, 100);
+    ready();
+  } else {
+    player.loadVideoById(song.video_id);
+  }
+
+  startProgress();
+}
+
 async function loadNextSong() {
+  // If we're not at the end of history, step forward without an API call
+  if (historyIndex < songHistory.length - 1) {
+    historyIndex++;
+    playSong(songHistory[historyIndex]);
+    refreshStats();
+    drawTrend();
+    return;
+  }
+
   setLoading(true);
   try {
     const res  = await fetch('/api/next', { headers: { 'X-User-ID': getUserId() } });
     const song = await res.json();
     if (song.error) throw new Error(song.error);
 
-    currentSong  = song;
-    feedbackSent = false;
-    adPlaying    = false;
+    songHistory.push(song);
+    historyIndex = songHistory.length - 1;
 
-    updateUI(song);
-
-    if (!player) {
-      // First song: wait for YT API if needed
-      const ready = () => ytApiReady
-        ? initPlayer(song.video_id)
-        : setTimeout(ready, 100);
-      ready();
-    } else {
-      player.loadVideoById(song.video_id);
-    }
-
-    startProgress();
+    playSong(song);
     refreshStats();
     drawTrend();
   } catch (err) {
@@ -102,6 +120,19 @@ async function loadNextSong() {
   } finally {
     setLoading(false);
   }
+}
+
+function previousSong() {
+  if (historyIndex <= 0 || !currentSong) return;
+  const current  = player?.getCurrentTime?.() ?? 0;
+  const duration = player?.getDuration?.()    ?? 1;
+  const ratio    = duration > 0 ? current / duration : 0;
+  const liked    = ratio >= LIKE_THRESHOLD;
+  sendFeedback(ratio, liked);
+  historyIndex--;
+  playSong(songHistory[historyIndex]);
+  refreshStats();
+  drawTrend();
 }
 
 // ── Feedback ──────────────────────────────────────────────────────────────────
@@ -192,7 +223,12 @@ function updateUI(song) {
 function setLoading(on) {
   document.getElementById('btn-skip').disabled  = on;
   document.getElementById('btn-pause').disabled = on;
+  document.getElementById('btn-prev').disabled  = on || historyIndex <= 0;
   if (on) document.getElementById('song-artist').textContent = 'Loading…';
+}
+
+function updateNavButtons() {
+  document.getElementById('btn-prev').disabled = historyIndex <= 0;
 }
 
 function setStatus(msg) {
@@ -249,13 +285,22 @@ function toast(msg, color = '#fff') {
 
 document.getElementById('btn-start').addEventListener('click', () => {
   document.getElementById('btn-start').style.display = 'none';
-  document.getElementById('btn-skip').style.display  = '';
+  document.getElementById('btn-prev').style.display  = '';
   document.getElementById('btn-pause').style.display = '';
+  document.getElementById('btn-skip').style.display  = '';
   loadNextSong();
 });
 
+document.getElementById('btn-prev').addEventListener('click', previousSong);
 document.getElementById('btn-skip').addEventListener('click', skipSong);
 document.getElementById('btn-pause').addEventListener('click', togglePause);
+
+document.addEventListener('keydown', (e) => {
+  if (!currentSong) return;
+  if (e.key === 'ArrowRight') { e.preventDefault(); skipSong(); }
+  if (e.key === 'ArrowLeft')  { e.preventDefault(); previousSong(); }
+  if (e.key === ' ')          { e.preventDefault(); togglePause(); }
+});
 
 // Inject YouTube IFrame API script
 const ytScript = document.createElement('script');
