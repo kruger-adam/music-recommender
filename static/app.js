@@ -6,14 +6,15 @@ function getUserId() {
   return id;
 }
 
-let player        = null;
-let ytApiReady    = false;
-let currentSong   = null;
-let feedbackSent  = false;
-let progressTimer = null;
-let adPlaying     = false;
-let songHistory   = [];
-let historyIndex  = -1;
+let player          = null;
+let ytApiReady      = false;
+let currentSong     = null;
+let feedbackSent    = false;
+let superlikedSent  = false;
+let progressTimer   = null;
+let adPlaying       = false;
+let songHistory     = [];
+let historyIndex    = -1;
 
 // ── YouTube IFrame API ────────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ function handleStateChange(e) {
   if (e.data === YT.PlayerState.ENDED) {
     if (!adPlaying) {
       if (!feedbackSent) sendFeedback(1.0, true);
-      toast('Liked ♥', '#1db954');
+      if (!superlikedSent) toast('Liked ♥', '#1db954');
       loadNextSong();
     }
   }
@@ -72,9 +73,10 @@ function handleError(e) {
 // ── Song loading ──────────────────────────────────────────────────────────────
 
 function playSong(song) {
-  currentSong  = song;
-  feedbackSent = false;
-  adPlaying    = false;
+  currentSong     = song;
+  feedbackSent    = false;
+  superlikedSent  = false;
+  adPlaying       = false;
   const superBtn = document.getElementById('btn-superlike');
   superBtn.classList.remove('superliked');
   superBtn.disabled = false;
@@ -225,10 +227,8 @@ function updateUI(song) {
 
 function sendSuperlike() {
   if (!currentSong || feedbackSent) return;
-  feedbackSent = true;
-  const current  = player?.getCurrentTime?.() ?? 0;
-  const duration = player?.getDuration?.()    ?? 1;
-  const completion = duration > 0 ? current / duration : 1.0;
+  feedbackSent   = true;
+  superlikedSent = true;
   fetch('/api/superlike', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json', 'X-User-ID': getUserId() },
@@ -237,7 +237,7 @@ function sendSuperlike() {
       title:       currentSong.title,
       artist_name: currentSong.artist_name,
       artist_id:   currentSong.artist_id,
-      completion,
+      completion:  1.0,
     }),
   });
   const btn = document.getElementById('btn-superlike');
