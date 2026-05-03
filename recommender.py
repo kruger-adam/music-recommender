@@ -24,7 +24,6 @@ def _parse_song(raw):
     album     = raw.get('album') or {}
     thumbs    = raw.get('thumbnails') or []
     duration  = raw.get('duration_seconds', 0)
-    # skip non-song-length content
     if duration and (duration < 60 or duration > 600):
         return None
     return {
@@ -39,17 +38,20 @@ def _parse_song(raw):
     }
 
 
-def _artist_scores():
+def _artist_scores(user_id):
     db = get_db()
-    rows = db.execute('SELECT artist_id, like_count, skip_count FROM artist_scores').fetchall()
+    rows = db.execute(
+        'SELECT artist_id, like_count, skip_count FROM artist_scores WHERE user_id=?', (user_id,)
+    ).fetchall()
     db.close()
     return {r['artist_id']: (r['like_count'], r['skip_count']) for r in rows if r['artist_id']}
 
 
-def _recently_played():
+def _recently_played(user_id):
     db = get_db()
     rows = db.execute(
-        'SELECT video_id FROM plays ORDER BY played_at DESC LIMIT ?', (RECENT_WINDOW,)
+        'SELECT video_id FROM plays WHERE user_id=? ORDER BY played_at DESC LIMIT ?',
+        (user_id, RECENT_WINDOW)
     ).fetchall()
     db.close()
     return {r['video_id'] for r in rows}
@@ -57,7 +59,7 @@ def _recently_played():
 
 def _score(song, scores):
     artist_id = song.get('artist_id')
-    base = random.uniform(0, 1)  # exploration noise
+    base = random.uniform(0, 1)
     if artist_id and artist_id in scores:
         likes, skips = scores[artist_id]
         base += likes * 3 - skips * 2
@@ -89,10 +91,11 @@ def _warm_candidates(liked_ids):
     return candidates
 
 
-def get_next_song():
+def get_next_song(user_id):
     db = get_db()
     liked = db.execute(
-        'SELECT video_id FROM plays WHERE liked=1 ORDER BY played_at DESC LIMIT 20'
+        'SELECT video_id FROM plays WHERE user_id=? AND liked=1 ORDER BY played_at DESC LIMIT 20',
+        (user_id,)
     ).fetchall()
     db.close()
 
@@ -102,35 +105,35 @@ def get_next_song():
     if not candidates:
         return None
 
-    recent  = _recently_played()
-    scores  = _artist_scores()
+    recent  = _recently_played(user_id)
+    scores  = _artist_scores(user_id)
     fresh   = [c for c in candidates if c['video_id'] not in recent] or candidates
     ranked  = sorted(fresh, key=lambda s: _score(s, scores), reverse=True)
     return ranked[0]
 
 
-def record_feedback(video_id, title, artist_name, artist_id, completion, liked):
+def record_feedback(user_id, video_id, title, artist_name, artist_id, completion, liked):
     db = get_db()
     db.execute(
-        'INSERT INTO plays (video_id, title, artist_id, artist_name, completion, liked) VALUES (?,?,?,?,?,?)',
-        (video_id, title, artist_id, artist_name, completion, 1 if liked else 0),
+        'INSERT INTO plays (user_id, video_id, title, artist_id, artist_name, completion, liked) VALUES (?,?,?,?,?,?,?)',
+        (user_id, video_id, title, artist_id, artist_name, completion, 1 if liked else 0),
     )
     if artist_id:
         if liked:
             db.execute('''
-                INSERT INTO artist_scores (artist_id, artist_name, like_count, skip_count)
-                VALUES (?,?,1,0)
-                ON CONFLICT(artist_id) DO UPDATE SET
+                INSERT INTO artist_scores (user_id, artist_id, artist_name, like_count, skip_count)
+                VALUES (?,?,?,1,0)
+                ON CONFLICT(user_id, artist_id) DO UPDATE SET
                     like_count  = like_count + 1,
                     artist_name = excluded.artist_name
-            ''', (artist_id, artist_name))
+            ''', (user_id, artist_id, artist_name))
         else:
             db.execute('''
-                INSERT INTO artist_scores (artist_id, artist_name, like_count, skip_count)
-                VALUES (?,?,0,1)
-                ON CONFLICT(artist_id) DO UPDATE SET
+                INSERT INTO artist_scores (user_id, artist_id, artist_name, like_count, skip_count)
+                VALUES (?,?,?,0,1)
+                ON CONFLICT(user_id, artist_id) DO UPDATE SET
                     skip_count  = skip_count + 1,
                     artist_name = excluded.artist_name
-            ''', (artist_id, artist_name))
+            ''', (user_id, artist_id, artist_name))
     db.commit()
     db.close()

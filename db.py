@@ -47,6 +47,7 @@ def init_db():
     conn.execute('''
         CREATE TABLE IF NOT EXISTS plays (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     TEXT NOT NULL DEFAULT '',
             video_id    TEXT NOT NULL,
             title       TEXT,
             artist_id   TEXT,
@@ -58,10 +59,12 @@ def init_db():
     ''')
     conn.execute('''
         CREATE TABLE IF NOT EXISTS artist_scores (
-            artist_id   TEXT PRIMARY KEY,
+            user_id     TEXT NOT NULL DEFAULT '',
+            artist_id   TEXT NOT NULL,
             artist_name TEXT,
             like_count  INTEGER DEFAULT 0,
-            skip_count  INTEGER DEFAULT 0
+            skip_count  INTEGER DEFAULT 0,
+            PRIMARY KEY (user_id, artist_id)
         )
     ''')
     conn.execute('CREATE INDEX IF NOT EXISTS idx_plays_video  ON plays(video_id)')

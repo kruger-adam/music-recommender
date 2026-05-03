@@ -1,5 +1,11 @@
 const LIKE_THRESHOLD = 0.80; // played ≥80% → liked
 
+function getUserId() {
+  let id = localStorage.getItem('user_id');
+  if (!id) { id = crypto.randomUUID(); localStorage.setItem('user_id', id); }
+  return id;
+}
+
 let player        = null;
 let ytApiReady    = false;
 let currentSong   = null;
@@ -66,7 +72,7 @@ function handleError(e) {
 async function loadNextSong() {
   setLoading(true);
   try {
-    const res  = await fetch('/api/next');
+    const res  = await fetch('/api/next', { headers: { 'X-User-ID': getUserId() } });
     const song = await res.json();
     if (song.error) throw new Error(song.error);
 
@@ -104,7 +110,7 @@ function sendFeedback(completion, liked) {
   feedbackSent = true;
   fetch('/api/feedback', {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-User-ID': getUserId() },
     body: JSON.stringify({
       video_id:    currentSong.video_id,
       title:       currentSong.title,
@@ -181,7 +187,7 @@ function setStatus(msg) {
 }
 
 async function refreshStats() {
-  const res  = await fetch('/api/stats');
+  const res  = await fetch('/api/stats', { headers: { 'X-User-ID': getUserId() } });
   const data = await res.json();
   const el   = document.getElementById('stats');
   if (data.total === 0) { el.textContent = ''; return; }

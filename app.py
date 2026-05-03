@@ -6,6 +6,10 @@ app = Flask(__name__, static_folder='static')
 init_db()
 
 
+def get_user_id():
+    return request.headers.get('X-User-ID', '')
+
+
 @app.route('/')
 def index():
     return send_from_directory('static', 'index.html')
@@ -18,7 +22,7 @@ def static_files(path):
 
 @app.route('/api/next')
 def next_song():
-    song = get_next_song()
+    song = get_next_song(get_user_id())
     if song:
         return jsonify(song)
     return jsonify({'error': 'No songs found'}), 503
@@ -28,6 +32,7 @@ def next_song():
 def feedback():
     d = request.json
     record_feedback(
+        user_id     = get_user_id(),
         video_id    = d['video_id'],
         title       = d.get('title'),
         artist_name = d.get('artist_name'),
@@ -40,15 +45,17 @@ def feedback():
 
 @app.route('/api/stats')
 def stats():
+    user_id = get_user_id()
     db = get_db()
-    total  = db.execute('SELECT COUNT(*) as n FROM plays WHERE liked IS NOT NULL').fetchone()['n']
-    liked  = db.execute('SELECT COUNT(*) as n FROM plays WHERE liked=1').fetchone()['n']
+    total  = db.execute('SELECT COUNT(*) as n FROM plays WHERE user_id=? AND liked IS NOT NULL', (user_id,)).fetchone()['n']
+    liked  = db.execute('SELECT COUNT(*) as n FROM plays WHERE user_id=? AND liked=1', (user_id,)).fetchone()['n']
     top    = db.execute('''
         SELECT artist_name, like_count, skip_count
         FROM artist_scores
+        WHERE user_id=?
         ORDER BY like_count - skip_count DESC
         LIMIT 5
-    ''').fetchall()
+    ''', (user_id,)).fetchall()
     db.close()
     return jsonify({
         'total':   total,
