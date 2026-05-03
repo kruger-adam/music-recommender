@@ -392,17 +392,48 @@ function toast(msg, color = '#fff') {
 
 // ── Skip reason ───────────────────────────────────────────────────────────────
 
+const SECONDARY_CHIPS = {
+  wrong_genre: {
+    label: 'What genre?',
+    chips: [
+      { label: 'Pop',        seed: 'pop' },
+      { label: 'Rock',       seed: 'rock' },
+      { label: 'Country',    seed: 'country' },
+      { label: 'R&B',        seed: 'r&b' },
+      { label: 'Hip-hop',    seed: 'hip-hop' },
+      { label: 'Electronic', seed: 'electronic' },
+      { label: 'Jazz',       seed: 'jazz' },
+      { label: 'Folk',       seed: 'folk' },
+      { label: 'Latin',      seed: 'latin' },
+      { label: 'Reggae',     seed: 'reggae' },
+    ],
+  },
+  not_mood: {
+    label: 'More or less energy?',
+    chips: [
+      { label: 'More energy', seed: 'more_energy' },
+      { label: 'Less energy', seed: 'less_energy' },
+    ],
+  },
+};
+
+let pendingPrimaryReason = null;
+
 function showSkipReason(videoId) {
-  skipReasonId = videoId;
+  skipReasonId         = videoId;
+  pendingPrimaryReason = null;
   clearTimeout(skipReasonTimer);
   document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+  document.getElementById('skip-reason-secondary').style.display = 'none';
   document.getElementById('skip-reason-panel').style.display = '';
 }
 
 function hideSkipReason() {
   clearTimeout(skipReasonTimer);
   document.getElementById('skip-reason-panel').style.display = 'none';
-  skipReasonId = null;
+  document.getElementById('skip-reason-secondary').style.display = 'none';
+  skipReasonId         = null;
+  pendingPrimaryReason = null;
 }
 
 function sendSkipReason(reason) {
@@ -415,10 +446,58 @@ function sendSkipReason(reason) {
   hideSkipReason();
 }
 
+function showSecondary(primaryReason) {
+  const config = SECONDARY_CHIPS[primaryReason];
+  if (!config) return;
+  pendingPrimaryReason = primaryReason;
+  document.getElementById('skip-reason-secondary-label').textContent = config.label;
+  const container = document.getElementById('skip-reason-secondary-chips');
+  container.innerHTML = '';
+  config.chips.forEach(({ label, seed }) => {
+    const btn = document.createElement('button');
+    btn.className   = 'chip';
+    btn.textContent = label;
+    btn.addEventListener('click', () => handleSecondaryChip(seed));
+    container.appendChild(btn);
+  });
+  document.getElementById('skip-reason-secondary').style.display = '';
+}
+
+function handleSecondaryChip(seed) {
+  sendSkipReason(`${pendingPrimaryReason}:${seed}`);
+  sendFeedback(0, false); // skip current song if feedback not yet sent
+  loadSeededSong(seed);
+}
+
+async function loadSeededSong(seed) {
+  setLoading(true);
+  try {
+    const res  = await fetch(`/api/next?seed=${encodeURIComponent(seed)}`, {
+      headers: { 'X-User-ID': getUserId() },
+    });
+    const song = await res.json();
+    if (song.error) throw new Error(song.error);
+    songHistory.push(song);
+    historyIndex = songHistory.length - 1;
+    playSong(song);
+    refreshStats();
+    drawTrend();
+  } catch (err) {
+    console.error('loadSeededSong failed:', err);
+  } finally {
+    setLoading(false);
+  }
+}
+
 document.querySelectorAll('.chip').forEach(btn => {
   btn.addEventListener('click', () => {
     btn.classList.add('selected');
-    sendSkipReason(btn.dataset.reason);
+    const reason = btn.dataset.reason;
+    if (reason === 'wrong_genre' || reason === 'not_mood') {
+      showSecondary(reason);
+    } else {
+      sendSkipReason(reason);
+    }
   });
 });
 

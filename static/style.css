@@ -199,6 +199,13 @@ body {
 .chip:hover { border-color: #555; color: #ccc; }
 .chip.selected { border-color: #777; color: #ccc; background: #242424; }
 
+.skip-reason-secondary {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #1a1a1a;
+  animation: fadeIn 0.15s ease;
+}
+
 /* ── Stats ── */
 .stats {
   font-size: 11px;

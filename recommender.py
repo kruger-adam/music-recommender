@@ -27,6 +27,21 @@ SEED_QUERIES = [
 
 COLD_INJECT_RATE = 0.20  # 1 in 5 songs explores a new genre
 
+GENRE_SEEDS = {
+    'pop':         ['80s pop hits', '90s pop hits', '2000s pop hits', '2010s pop hits'],
+    'rock':        ['classic rock hits', '80s rock hits', '90s alternative rock', '70s classic rock'],
+    'country':     ['classic country hits', '90s country hits', '2000s country hits'],
+    'r&b':         ['motown hits', '70s soul hits', '90s r&b hits', '2000s r&b hits'],
+    'hip-hop':     ['90s hip hop hits', '2000s hip hop hits', 'classic rap hits'],
+    'electronic':  ['90s dance hits', '2000s euro dance hits', 'classic edm hits'],
+    'jazz':        ['jazz standards'],
+    'folk':        ['folk hits'],
+    'latin':       ['latin pop hits'],
+    'reggae':      ['reggae hits'],
+    'more_energy': ['2000s dance pop hits', '90s dance hits', '80s rock hits', '2000s euro dance hits'],
+    'less_energy': ['jazz standards', 'folk hits', '70s soul hits', 'classic blues hits'],
+}
+
 
 def _parse_song(raw):
     video_id = raw.get('videoId')
@@ -79,8 +94,8 @@ def _score(song, scores):
     return base
 
 
-def _cold_candidates():
-    query = random.choice(SEED_QUERIES)
+def _cold_candidates(query=None):
+    query = query or random.choice(SEED_QUERIES)
     try:
         results = yt.search(query, filter='songs', limit=25)
         return [s for s in (_parse_song(r) for r in results) if s]
@@ -107,7 +122,7 @@ def _warm_candidates(liked_ids):
     return candidates
 
 
-def get_next_song(user_id):
+def get_next_song(user_id, seed=None):
     db = get_db()
     superliked = db.execute(
         'SELECT video_id FROM plays WHERE user_id=? AND superliked=1 ORDER BY played_at DESC LIMIT 10',
@@ -122,7 +137,9 @@ def get_next_song(user_id):
     superliked_ids = [r['video_id'] for r in superliked]
     liked_ids      = [r['video_id'] for r in liked]
     seed_ids       = superliked_ids if superliked_ids else liked_ids
-    if not seed_ids or random.random() < COLD_INJECT_RATE:
+    if seed and seed in GENRE_SEEDS:
+        candidates = _cold_candidates(random.choice(GENRE_SEEDS[seed]))
+    elif not seed_ids or random.random() < COLD_INJECT_RATE:
         candidates = _cold_candidates() or (_warm_candidates(seed_ids) if seed_ids else [])
     else:
         candidates = _warm_candidates(seed_ids)

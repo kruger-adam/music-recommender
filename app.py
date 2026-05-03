@@ -22,7 +22,8 @@ def static_files(path):
 
 @app.route('/api/next')
 def next_song():
-    song = get_next_song(get_user_id())
+    seed = request.args.get('seed')
+    song = get_next_song(get_user_id(), seed=seed)
     if song:
         return jsonify(song)
     return jsonify({'error': 'No songs found'}), 503
