@@ -1,13 +1,112 @@
-from flask import Flask, jsonify, request, send_from_directory
+import os
+import uuid
+import secrets
+from datetime import datetime, timedelta, timezone
+
+import jwt
+import resend
+from flask import Flask, jsonify, request, send_from_directory, redirect, make_response
 from db import init_db, get_db
 from recommender import get_next_song, record_feedback
 
 app = Flask(__name__, static_folder='static')
 init_db()
 
+JWT_SECRET = os.getenv('JWT_SECRET', '')
+
 
 def get_user_id():
-    return request.headers.get('X-User-ID', '')
+    token = request.cookies.get('auth')
+    if not token or not JWT_SECRET:
+        return ''
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        return payload.get('user_id', '')
+    except jwt.InvalidTokenError:
+        return ''
+
+
+@app.route('/auth/send-link', methods=['POST'])
+def send_link():
+    data = request.get_json(silent=True) or {}
+    email = data.get('email', '').strip().lower()
+    if not email or '@' not in email:
+        return jsonify({'error': 'Invalid email'}), 400
+
+    conn = get_db()
+    row = conn.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
+    if row:
+        user_id = row['id']
+    else:
+        user_id = str(uuid.uuid4())
+        conn.execute('INSERT INTO users (id, email) VALUES (?, ?)', (user_id, email))
+        conn.commit()
+
+    token = secrets.token_urlsafe(32)
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+    conn.execute(
+        'INSERT INTO magic_tokens (token, user_id, expires_at) VALUES (?, ?, ?)',
+        (token, user_id, expires_at),
+    )
+    conn.commit()
+    conn.close()
+
+    link = request.host_url.rstrip('/') + f'/auth/verify?token={token}'
+    resend.api_key = os.getenv('RESEND_API_KEY', '')
+    resend.Emails.send({
+        'from': os.getenv('FROM_EMAIL', 'onboarding@resend.dev'),
+        'to': email,
+        'subject': 'Your Music Recommender login link',
+        'html': f'<p><a href="{link}">Click here to log in</a></p><p>Expires in 15 minutes.</p>',
+    })
+
+    return jsonify({'ok': True})
+
+
+@app.route('/auth/verify')
+def verify():
+    token = request.args.get('token', '')
+    conn = get_db()
+    row = conn.execute(
+        'SELECT user_id, expires_at, used FROM magic_tokens WHERE token = ?', (token,)
+    ).fetchone()
+    conn.close()
+
+    if not row or row['used']:
+        return redirect('/?error=invalid')
+
+    expires_at = datetime.fromisoformat(row['expires_at'])
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        return redirect('/?error=expired')
+
+    conn = get_db()
+    conn.execute('UPDATE magic_tokens SET used = 1 WHERE token = ?', (token,))
+    conn.commit()
+    conn.close()
+
+    jwt_token = jwt.encode(
+        {'user_id': row['user_id'], 'exp': datetime.now(timezone.utc) + timedelta(days=30)},
+        JWT_SECRET,
+        algorithm='HS256',
+    )
+    resp = make_response(redirect('/'))
+    resp.set_cookie('auth', jwt_token, httponly=True, secure=True, samesite='Lax', max_age=30 * 24 * 3600)
+    return resp
+
+
+@app.route('/auth/me')
+def auth_me():
+    user_id = get_user_id()
+    return jsonify({'user_id': user_id or None})
+
+
+@app.route('/auth/logout', methods=['POST'])
+def logout():
+    resp = make_response(jsonify({'ok': True}))
+    resp.delete_cookie('auth')
+    return resp
 
 
 @app.route('/')

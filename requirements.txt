@@ -1,3 +1,5 @@
 flask>=3.0
 ytmusicapi>=1.7
 libsql-experimental
+PyJWT>=2.8
+resend>=2.0

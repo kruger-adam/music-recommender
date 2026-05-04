@@ -1,9 +1,50 @@
 const LIKE_THRESHOLD = 0.80; // played ≥80% → liked
 
-function getUserId() {
-  let id = localStorage.getItem('user_id');
-  if (!id) { id = crypto.randomUUID(); localStorage.setItem('user_id', id); }
-  return id;
+// ── Auth ─────────────────────────────────────────────────────────────────────
+
+async function checkAuth() {
+  const res = await fetch('/auth/me');
+  const { user_id } = await res.json();
+  return user_id;
+}
+
+function showLoginPanel() {
+  document.getElementById('login-panel').style.display = '';
+  document.getElementById('player-panel').style.display = 'none';
+}
+
+function showPlayerPanel() {
+  document.getElementById('login-panel').style.display = 'none';
+  document.getElementById('player-panel').style.display = '';
+}
+
+async function handleSendLink() {
+  const email = document.getElementById('login-email').value.trim();
+  const msg   = document.getElementById('login-msg');
+  const btn   = document.getElementById('btn-send-link');
+  if (!email) return;
+  btn.disabled = true;
+  msg.textContent = '';
+  try {
+    const res = await fetch('/auth/send-link', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      msg.style.color   = '#1db954';
+      msg.textContent   = 'Check your email for a login link.';
+    } else {
+      msg.style.color   = '#e05263';
+      msg.textContent   = data.error || 'Something went wrong.';
+      btn.disabled = false;
+    }
+  } catch {
+    msg.style.color = '#e05263';
+    msg.textContent = 'Network error. Try again.';
+    btn.disabled = false;
+  }
 }
 
 let player           = null;
@@ -112,7 +153,7 @@ async function loadNextSong() {
 
   setLoading(true);
   try {
-    const res  = await fetch('/api/next', { headers: { 'X-User-ID': getUserId() } });
+    const res  = await fetch('/api/next');
     const song = await res.json();
     if (song.error) throw new Error(song.error);
 
@@ -151,7 +192,7 @@ function sendFeedback(completion, liked) {
   feedbackSent = true;
   fetch('/api/feedback', {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json', 'X-User-ID': getUserId() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       video_id:    currentSong.video_id,
       title:       currentSong.title,
@@ -238,7 +279,7 @@ function sendSuperlike() {
   superlikedSent = true;
   fetch('/api/superlike', {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json', 'X-User-ID': getUserId() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       video_id:    currentSong.video_id,
       title:       currentSong.title,
@@ -274,7 +315,7 @@ let trendBuckets = [];
 let skipDetailOpen = false;
 
 async function drawTrend() {
-  const res = await fetch('/api/trend', { headers: { 'X-User-ID': getUserId() } });
+  const res = await fetch('/api/trend');
   const { buckets } = await res.json();
   const wrap = document.getElementById('trend-wrap');
   if (buckets.length < 2) { wrap.style.display = 'none'; return; }
@@ -357,7 +398,19 @@ function drawSkipDetail() {
   svg.innerHTML = gridLines + bars + xLabels;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  const userId = await checkAuth();
+  if (userId) {
+    showPlayerPanel();
+  } else {
+    showLoginPanel();
+  }
+
+  document.getElementById('btn-send-link').addEventListener('click', handleSendLink);
+  document.getElementById('login-email').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleSendLink();
+  });
+
   document.getElementById('trend-label').addEventListener('click', () => {
     skipDetailOpen = !skipDetailOpen;
     const detail = document.getElementById('skip-detail');
@@ -374,7 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function refreshStats() {
-  const res  = await fetch('/api/stats', { headers: { 'X-User-ID': getUserId() } });
+  const res  = await fetch('/api/stats');
   const data = await res.json();
   const el   = document.getElementById('stats');
   if (data.total === 0) { el.textContent = ''; return; }
@@ -448,7 +501,7 @@ function sendSkipReason(reason) {
   if (!skipReasonId) return;
   fetch('/api/skip-reason', {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json', 'X-User-ID': getUserId() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ video_id: skipReasonId, reason }),
   });
   hideSkipReason();
@@ -505,7 +558,7 @@ async function loadNextSongWith(params) {
   setLoading(true);
   try {
     const url  = '/api/next?' + new URLSearchParams(params);
-    const res  = await fetch(url, { headers: { 'X-User-ID': getUserId() } });
+    const res  = await fetch(url);
     const song = await res.json();
     if (song.error) throw new Error(song.error);
     songHistory.push(song);

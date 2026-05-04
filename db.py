@@ -45,6 +45,21 @@ def get_db():
 def init_db():
     conn = get_db()
     conn.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id         TEXT PRIMARY KEY,
+            email      TEXT UNIQUE NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS magic_tokens (
+            token      TEXT PRIMARY KEY,
+            user_id    TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            used       INTEGER DEFAULT 0
+        )
+    ''')
+    conn.execute('''
         CREATE TABLE IF NOT EXISTS plays (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id     TEXT NOT NULL DEFAULT '',
