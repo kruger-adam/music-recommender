@@ -142,6 +142,8 @@ function handleStateChange(e) {
       document.getElementById('btn-skip').disabled = false;
       updateUI(currentSong);
       startProgress();
+    } else if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = 'playing';
     }
   }
 
@@ -161,6 +163,34 @@ function handleError(e) {
   loadNextSong();
 }
 
+// ── MediaSession (lock screen controls + background audio) ───────────────────
+
+function setupMediaSession() {
+  if (!('mediaSession' in navigator)) return;
+  navigator.mediaSession.setActionHandler('play', () => {
+    player?.playVideo();
+    navigator.mediaSession.playbackState = 'playing';
+    document.getElementById('btn-pause').textContent = 'Pause';
+  });
+  navigator.mediaSession.setActionHandler('pause', () => {
+    player?.pauseVideo();
+    navigator.mediaSession.playbackState = 'paused';
+    document.getElementById('btn-pause').textContent = 'Resume';
+  });
+  navigator.mediaSession.setActionHandler('nexttrack', skipSong);
+  navigator.mediaSession.setActionHandler('previoustrack', previousSong);
+}
+
+function updateMediaSession(song) {
+  if (!('mediaSession' in navigator)) return;
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title:   song.title,
+    artist:  song.artist_name || '',
+    artwork: song.thumbnail ? [{ src: song.thumbnail }] : [],
+  });
+  navigator.mediaSession.playbackState = 'playing';
+}
+
 // ── Song loading ──────────────────────────────────────────────────────────────
 
 function playSong(song) {
@@ -173,6 +203,7 @@ function playSong(song) {
   superBtn.disabled = false;
 
   updateUI(song);
+  updateMediaSession(song);
   updateNavButtons();
 
   if (!player) {
@@ -270,9 +301,11 @@ function togglePause() {
   if (player.getPlayerState() === YT.PlayerState.PLAYING) {
     player.pauseVideo();
     btn.textContent = 'Resume';
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
   } else if (player.getPlayerState() === YT.PlayerState.PAUSED) {
     player.playVideo();
     btn.textContent = 'Pause';
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
   }
 }
 
@@ -445,6 +478,8 @@ function drawSkipDetail() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  setupMediaSession();
+
   const userId = await checkAuth();
   if (userId) {
     showPlayerPanel();
