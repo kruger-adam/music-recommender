@@ -15,22 +15,22 @@ A self-learning YouTube Music player. The more you use it, the better it knows y
 
 ## Auth
 
-Sign-in is email-based magic links — no passwords. Enter your email, click the link, done. Your profile is tied to your email so it syncs across all your devices automatically.
+Sign-in is email-based — no passwords. Enter your email, get a 6-digit code, type it into the app. Works from any context (including home screen web apps on iOS, which can't share cookies with Safari). Your profile is tied to your email so it syncs across devices automatically.
 
 ## Stack
 
 - **Backend:** Python / Flask, deployed as Vercel serverless functions
 - **Database:** Turso (libSQL) — persists your taste across sessions
 - **Music source:** YouTube Music (no API key required)
-- **Auth:** Magic link emails via Gmail SMTP, JWT cookies
+- **Auth:** 6-digit code emails via Gmail SMTP, JWT stored in localStorage
 
 ## API endpoints
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/auth/send-link` | Send a magic login link to an email address |
-| `GET` | `/auth/verify` | Verify a magic link token and set auth cookie |
-| `GET` | `/auth/me` | Return the current user ID from cookie |
+| `POST` | `/auth/send-link` | Send a 6-digit login code to an email address |
+| `POST` | `/auth/verify-code` | Verify a 6-digit code and return a JWT |
+| `GET` | `/auth/me` | Return the current user ID (Bearer token or cookie) |
 | `POST` | `/auth/logout` | Clear the auth cookie |
 | `GET` | `/api/next` | Get the next recommended song |
 | `POST` | `/api/feedback` | Record play completion and like/skip |

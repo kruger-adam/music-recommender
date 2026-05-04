@@ -9,9 +9,16 @@
 <body>
   <div class="login-panel" id="login-panel" style="display:none">
     <div class="login-title">Music Recommender</div>
-    <p class="login-subtitle">Enter your email to sign in</p>
-    <input type="email" id="login-email" placeholder="your@email.com" autocomplete="email">
-    <button class="btn-start" id="btn-send-link">Send login link</button>
+    <div id="email-section">
+      <p class="login-subtitle">Enter your email to sign in</p>
+      <input type="email" id="login-email" placeholder="your@email.com" autocomplete="email">
+      <button class="btn-start" id="btn-send-link">Send login code</button>
+    </div>
+    <div id="code-section" style="display:none">
+      <p class="login-subtitle">Enter the 6-digit code from your email</p>
+      <input type="text" id="login-code" placeholder="123456" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
+      <button class="btn-start" id="btn-verify-code">Verify code</button>
+    </div>
     <div class="login-msg" id="login-msg"></div>
   </div>
 

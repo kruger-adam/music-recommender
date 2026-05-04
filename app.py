@@ -18,7 +18,11 @@ JWT_SECRET = os.getenv('JWT_SECRET', '')
 
 
 def get_user_id():
-    token = request.cookies.get('auth')
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.startswith('Bearer '):
+        token = auth_header[7:]
+    else:
+        token = request.cookies.get('auth')
     if not token or not JWT_SECRET:
         return ''
     try:
@@ -57,20 +61,53 @@ def send_link():
         conn.execute('INSERT INTO users (id, email) VALUES (?, ?)', (user_id, email))
         conn.commit()
 
-    token = secrets.token_urlsafe(32)
+    code = str(100000 + secrets.randbelow(900000))
     expires_at = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
     conn.execute(
         'INSERT INTO magic_tokens (token, user_id, expires_at) VALUES (?, ?, ?)',
-        (token, user_id, expires_at),
+        (code, user_id, expires_at),
     )
     conn.commit()
     conn.close()
 
-    link = request.host_url.rstrip('/') + f'/auth/verify?token={token}'
-    _send_email(email, 'Your Music Recommender login link',
-                f'<p><a href="{link}">Click here to log in</a></p><p>Expires in 15 minutes.</p>')
+    _send_email(email, 'Your Music Recommender login code',
+                f'<p>Your login code is:</p>'
+                f'<p style="font-size:2em;letter-spacing:0.15em;font-weight:bold">{code}</p>'
+                f'<p>Expires in 15 minutes.</p>')
 
     return jsonify({'ok': True})
+
+
+@app.route('/auth/verify-code', methods=['POST'])
+def verify_code():
+    data = request.get_json(silent=True) or {}
+    code = data.get('code', '').strip()
+    conn = get_db()
+    row = conn.execute(
+        'SELECT user_id, expires_at, used FROM magic_tokens WHERE token = ?', (code,)
+    ).fetchone()
+
+    if not row or row['used']:
+        conn.close()
+        return jsonify({'error': 'Invalid or already used code'}), 400
+
+    expires_at = datetime.fromisoformat(row['expires_at'])
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        conn.close()
+        return jsonify({'error': 'Code expired'}), 400
+
+    conn.execute('UPDATE magic_tokens SET used = 1 WHERE token = ?', (code,))
+    conn.commit()
+    conn.close()
+
+    jwt_token = jwt.encode(
+        {'user_id': row['user_id'], 'exp': datetime.now(timezone.utc) + timedelta(days=30)},
+        JWT_SECRET,
+        algorithm='HS256',
+    )
+    return jsonify({'token': jwt_token})
 
 
 @app.route('/auth/verify')

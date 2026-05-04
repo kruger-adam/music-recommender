@@ -1,9 +1,17 @@
 const LIKE_THRESHOLD = 0.80; // played ≥80% → liked
 
+function authFetch(url, options = {}) {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    options = { ...options, headers: { 'Authorization': `Bearer ${token}`, ...options.headers } };
+  }
+  return fetch(url, options);
+}
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 async function checkAuth() {
-  const res = await fetch('/auth/me');
+  const res = await authFetch('/auth/me');
   const { user_id } = await res.json();
   return user_id;
 }
@@ -34,8 +42,11 @@ async function handleSendLink() {
     });
     const data = await res.json();
     if (data.ok) {
+      document.getElementById('email-section').style.display = 'none';
+      document.getElementById('code-section').style.display = '';
       msg.style.color   = '#1db954';
-      msg.textContent   = 'Check your email for a login link.';
+      msg.textContent   = 'Check your email for a 6-digit code.';
+      setTimeout(() => document.getElementById('login-code').focus(), 50);
     } else {
       msg.style.color   = '#e05263';
       msg.textContent   = data.error || 'Something went wrong.';
@@ -46,6 +57,38 @@ async function handleSendLink() {
     msg.style.color = '#e05263';
     msg.textContent = 'Network error. Try again.';
     btn.textContent = 'Send login link';
+    btn.disabled = false;
+  }
+}
+
+async function handleVerifyCode() {
+  const code = document.getElementById('login-code').value.trim().replace(/\D/g, '');
+  const msg  = document.getElementById('login-msg');
+  const btn  = document.getElementById('btn-verify-code');
+  if (code.length !== 6) return;
+  btn.disabled = true;
+  btn.textContent = 'Verifying…';
+  msg.textContent = '';
+  try {
+    const res  = await fetch('/auth/verify-code', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ code }),
+    });
+    const data = await res.json();
+    if (data.token) {
+      localStorage.setItem('auth_token', data.token);
+      showPlayerPanel();
+    } else {
+      msg.style.color = '#e05263';
+      msg.textContent = data.error || 'Invalid code.';
+      btn.textContent = 'Verify code';
+      btn.disabled = false;
+    }
+  } catch {
+    msg.style.color = '#e05263';
+    msg.textContent = 'Network error. Try again.';
+    btn.textContent = 'Verify code';
     btn.disabled = false;
   }
 }
@@ -156,7 +199,7 @@ async function loadNextSong() {
 
   setLoading(true);
   try {
-    const res  = await fetch('/api/next');
+    const res  = await authFetch('/api/next');
     const song = await res.json();
     if (song.error) throw new Error(song.error);
 
@@ -193,7 +236,7 @@ function previousSong() {
 function sendFeedback(completion, liked) {
   if (!currentSong || feedbackSent) return;
   feedbackSent = true;
-  fetch('/api/feedback', {
+  authFetch('/api/feedback', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -280,7 +323,7 @@ function sendSuperlike() {
   if (!currentSong || feedbackSent) return;
   feedbackSent   = true;
   superlikedSent = true;
-  fetch('/api/superlike', {
+  authFetch('/api/superlike', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -318,7 +361,7 @@ let trendBuckets = [];
 let skipDetailOpen = false;
 
 async function drawTrend() {
-  const res = await fetch('/api/trend');
+  const res = await authFetch('/api/trend');
   const { buckets } = await res.json();
   const wrap = document.getElementById('trend-wrap');
   if (buckets.length < 2) { wrap.style.display = 'none'; return; }
@@ -413,6 +456,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('login-email').addEventListener('keydown', e => {
     if (e.key === 'Enter') handleSendLink();
   });
+  document.getElementById('btn-verify-code').addEventListener('click', handleVerifyCode);
+  document.getElementById('login-code').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleVerifyCode();
+  });
 
   document.getElementById('trend-label').addEventListener('click', () => {
     skipDetailOpen = !skipDetailOpen;
@@ -430,7 +477,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function refreshStats() {
-  const res  = await fetch('/api/stats');
+  const res  = await authFetch('/api/stats');
   const data = await res.json();
   const el   = document.getElementById('stats');
   if (data.total === 0) { el.textContent = ''; return; }
@@ -502,7 +549,7 @@ function hideSkipReason() {
 
 function sendSkipReason(reason) {
   if (!skipReasonId) return;
-  fetch('/api/skip-reason', {
+  authFetch('/api/skip-reason', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ video_id: skipReasonId, reason }),
@@ -561,7 +608,7 @@ async function loadNextSongWith(params) {
   setLoading(true);
   try {
     const url  = '/api/next?' + new URLSearchParams(params);
-    const res  = await fetch(url);
+    const res  = await authFetch(url);
     const song = await res.json();
     if (song.error) throw new Error(song.error);
     songHistory.push(song);
@@ -585,7 +632,7 @@ async function showSimilarArtists() {
   try {
     const params = new URLSearchParams({ video_id: skipReasonId });
     if (skipReasonArtistId) params.set('exclude_artist', skipReasonArtistId);
-    const { artists } = await fetch(`/api/similar-artists?${params}`).then(r => r.json());
+    const { artists } = await authFetch(`/api/similar-artists?${params}`).then(r => r.json());
     if (!artists.length) {
       container.innerHTML = '';
       return;
