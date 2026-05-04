@@ -733,12 +733,30 @@ document.querySelectorAll('.chip[data-reason]').forEach(btn => {
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 
+// Pre-initialize the YT player with no video so the iframe is created while the
+// user gesture is still active. iOS ties autoplay permission to the gesture that
+// created the player element — doing it after an async fetch loses that context.
+function preinitPlayer() {
+  if (!ytApiReady || player) return;
+  player = new YT.Player('yt-player', {
+    height: '1', width: '1',
+    playerVars: { playsinline: 1, controls: 0, rel: 0 },
+    events: {
+      onReady:       () => {},
+      onStateChange: handleStateChange,
+      onError:       handleError,
+    },
+  });
+}
+
 document.getElementById('btn-start').addEventListener('click', () => {
   document.getElementById('btn-start').style.display     = 'none';
   document.getElementById('btn-prev').style.display      = '';
   document.getElementById('btn-pause').style.display     = '';
   document.getElementById('btn-superlike').style.display = '';
   document.getElementById('btn-skip').style.display      = '';
+  startAudioSession(); // must happen within user gesture to unlock iOS audio session
+  preinitPlayer();     // must happen within user gesture to unlock iOS autoplay
   loadNextSong();
 });
 
