@@ -3,8 +3,10 @@ import uuid
 import secrets
 from datetime import datetime, timedelta, timezone
 
+import smtplib
+from email.mime.text import MIMEText
+
 import jwt
-import resend
 from flask import Flask, jsonify, request, send_from_directory, redirect, make_response
 from db import init_db, get_db
 from recommender import get_next_song, record_feedback
@@ -24,6 +26,19 @@ def get_user_id():
         return payload.get('user_id', '')
     except jwt.InvalidTokenError:
         return ''
+
+
+GMAIL_USER = 'adamkruger94@gmail.com'
+
+def _send_email(to, subject, html):
+    msg = MIMEText(html, 'html')
+    msg['Subject'] = subject
+    msg['From']    = GMAIL_USER
+    msg['To']      = to
+    with smtplib.SMTP('smtp.gmail.com', 587) as s:
+        s.starttls()
+        s.login(GMAIL_USER, os.getenv('GMAIL_APP_PASSWORD', ''))
+        s.sendmail(GMAIL_USER, to, msg.as_string())
 
 
 @app.route('/auth/send-link', methods=['POST'])
@@ -52,13 +67,8 @@ def send_link():
     conn.close()
 
     link = request.host_url.rstrip('/') + f'/auth/verify?token={token}'
-    resend.api_key = os.getenv('RESEND_API_KEY', '')
-    resend.Emails.send({
-        'from': os.getenv('FROM_EMAIL', 'onboarding@resend.dev'),
-        'to': email,
-        'subject': 'Your Music Recommender login link',
-        'html': f'<p><a href="{link}">Click here to log in</a></p><p>Expires in 15 minutes.</p>',
-    })
+    _send_email(email, 'Your Music Recommender login link',
+                f'<p><a href="{link}">Click here to log in</a></p><p>Expires in 15 minutes.</p>')
 
     return jsonify({'ok': True})
 
