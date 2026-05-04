@@ -24,6 +24,7 @@ async function handleSendLink() {
   const btn   = document.getElementById('btn-send-link');
   if (!email) return;
   btn.disabled = true;
+  btn.textContent = 'Sending…';
   msg.textContent = '';
   try {
     const res = await fetch('/auth/send-link', {
@@ -38,11 +39,13 @@ async function handleSendLink() {
     } else {
       msg.style.color   = '#e05263';
       msg.textContent   = data.error || 'Something went wrong.';
+      btn.textContent = 'Send login link';
       btn.disabled = false;
     }
   } catch {
     msg.style.color = '#e05263';
     msg.textContent = 'Network error. Try again.';
+    btn.textContent = 'Send login link';
     btn.disabled = false;
   }
 }
