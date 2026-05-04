@@ -105,6 +105,8 @@ let historyIndex     = -1;
 let skipReasonId       = null;
 let skipReasonArtistId = null;
 let skipReasonTimer    = null;
+let silentAudio        = null;
+let wakeLock           = null;
 
 // ── YouTube IFrame API ────────────────────────────────────────────────────────
 
@@ -191,6 +193,37 @@ function updateMediaSession(song) {
   navigator.mediaSession.playbackState = 'playing';
 }
 
+// ── Background playback keepalive ─────────────────────────────────────────────
+
+// Mobile browsers suspend pages when backgrounded. A looping silent <audio> element
+// maintains an audio session so iOS/Android keep the YouTube iframe alive. Wake Lock
+// prevents the screen from auto-locking mid-song.
+
+function startAudioSession() {
+  if (!silentAudio) {
+    silentAudio      = new Audio('/static/silence.wav');
+    silentAudio.loop = true;
+    // volume=0.001 (not muted) is required — muted elements don't register an audio session
+    silentAudio.volume = 0.001;
+  }
+  silentAudio.play().catch(() => {});
+}
+
+async function acquireWakeLock() {
+  if (!('wakeLock' in navigator) || wakeLock) return;
+  try { wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+}
+
+// Wake lock auto-releases when the page is hidden; re-acquire when user returns.
+// Also resume YouTube if it paused while backgrounded.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !currentSong) return;
+  acquireWakeLock();
+  if (player?.getPlayerState?.() === YT.PlayerState.PAUSED) {
+    player.playVideo();
+  }
+});
+
 // ── Song loading ──────────────────────────────────────────────────────────────
 
 function playSong(song) {
@@ -205,6 +238,8 @@ function playSong(song) {
   updateUI(song);
   updateMediaSession(song);
   updateNavButtons();
+  startAudioSession();
+  acquireWakeLock();
 
   if (!player) {
     const ready = () => ytApiReady
