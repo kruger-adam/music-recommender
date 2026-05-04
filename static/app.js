@@ -213,13 +213,19 @@ async function acquireWakeLock() {
   try { wakeLock = await navigator.wakeLock.request('screen'); } catch {}
 }
 
-// Wake lock auto-releases when the page is hidden; re-acquire when user returns.
-// Also resume YouTube if it paused while backgrounded.
+// iOS suspends cross-origin iframes (YouTube embed) when backgrounded — we can't
+// prevent the stop, but we track whether we were playing and resume immediately on return.
+let wasPlayingBeforeHide = false;
+
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible' || !currentSong) return;
-  acquireWakeLock();
-  if (player?.getPlayerState?.() === YT.PlayerState.PAUSED) {
-    player.playVideo();
+  if (document.visibilityState === 'hidden') {
+    wasPlayingBeforeHide = player?.getPlayerState?.() === YT.PlayerState.PLAYING;
+  } else {
+    acquireWakeLock();
+    if (wasPlayingBeforeHide && currentSong) {
+      // Small delay lets the player settle after iOS thaws the frozen page
+      setTimeout(() => player?.playVideo(), 200);
+    }
   }
 });
 
