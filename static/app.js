@@ -203,8 +203,7 @@ function startAudioSession() {
   if (!silentAudio) {
     silentAudio      = new Audio('/static/silence.wav');
     silentAudio.loop = true;
-    // volume=0.001 (not muted) is required — muted elements don't register an audio session
-    silentAudio.volume = 0.001;
+    silentAudio.volume = 0.01;
   }
   silentAudio.play().catch(() => {});
 }

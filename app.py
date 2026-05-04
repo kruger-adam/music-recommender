@@ -156,6 +156,24 @@ def logout():
     return resp
 
 
+@app.route('/manifest.json')
+def manifest():
+    r = make_response(jsonify({
+        "name": "Smart Shuffle",
+        "short_name": "Smart Shuffle",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#111111",
+        "theme_color": "#111111",
+        "icons": [
+            {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png"},
+            {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png"},
+        ],
+    }))
+    r.headers['Content-Type'] = 'application/manifest+json'
+    return r
+
+
 @app.route('/')
 def index():
     return send_from_directory('static', 'index.html')
