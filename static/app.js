@@ -428,7 +428,7 @@ function sendSuperlike() {
   const btn = document.getElementById('btn-superlike');
   btn.classList.add('superliked');
   btn.disabled = true;
-  toast('Superliked ♥♥', '#1db954');
+  toast('Superliked ♥', '#1db954');
 }
 
 function setLoading(on) {
@@ -794,12 +794,10 @@ document.getElementById('btn-start').addEventListener('click', () => {
   document.getElementById('btn-skip').style.display      = '';
   startAudioSession(); // must happen within user gesture to unlock iOS audio session
   preinitPlayer();     // must happen within user gesture to unlock iOS autoplay
-  if (savedRaw) {
-    try {
-      playSong(JSON.parse(savedRaw));
-    } catch {
-      loadNextSong();
-    }
+  let savedSong = null;
+  if (savedRaw) { try { savedSong = JSON.parse(savedRaw); } catch {} }
+  if (savedSong) {
+    playSong(savedSong);
   } else {
     loadNextSong();
   }
