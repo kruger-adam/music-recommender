@@ -1,3 +1,4 @@
+import re
 import random
 from ytmusicapi import YTMusic
 from db import get_db
@@ -26,6 +27,26 @@ SEED_QUERIES = [
 ]
 
 COLD_INJECT_RATE = 0.20  # 1 in 5 songs explores a new genre
+
+SEED_LABELS = {
+    'pop_80s': '80s Pop',          'pop_90s': '90s Pop',           'pop_2000s': '2000s Pop',      'pop_indie': 'Indie Pop',
+    'rock_classic': 'Classic Rock', 'rock_80s': '80s Rock',         'rock_alternative': 'Alt Rock', 'rock_hard': 'Hard Rock',      'rock_indie': 'Indie Rock',
+    'country_classic': 'Classic Country', 'country_90s': '90s Country', 'country_pop': 'Country Pop', 'country_new': 'New Country',  'country_bluegrass': 'Bluegrass',
+    'rnb_motown': 'Motown',        'rnb_soul': '70s Soul',          'rnb_90s': '90s R&B',          'rnb_2000s': '2000s R&B',
+    'hiphop_90s': '90s Hip-Hop',   'hiphop_2000s': '2000s Hip-Hop', 'hiphop_trap': 'Trap',         'hiphop_oldschool': 'Old School Rap',
+    'electronic_90s': '90s Dance', 'electronic_euro': 'Euro Dance', 'electronic_edm': 'EDM',       'electronic_house': 'House',   'electronic_synth': 'Synthwave',
+    'jazz_standards': 'Jazz Standards', 'jazz_smooth': 'Smooth Jazz', 'jazz_bebop': 'Bebop',       'jazz_swing': 'Swing',
+    'folk_classic': 'Folk',        'folk_americana': 'Americana',   'folk_singersong': 'Singer-Songwriter',
+    'latin_pop': 'Latin Pop',      'latin_reggaeton': 'Reggaeton',  'latin_salsa': 'Salsa',        'latin_bossa': 'Bossa Nova',
+    'reggae_classic': 'Reggae',    'reggae_ska': 'Ska',             'reggae_dancehall': 'Dancehall',
+    'more_energy': 'More Energy',  'less_energy': 'Less Energy',
+}
+
+
+def _format_query(q):
+    q = re.sub(r'\s+(hits|music)\s*$', '', q, flags=re.IGNORECASE).strip()
+    return ' '.join(w if w[0].isdigit() else w.capitalize() for w in q.split())
+
 
 GENRE_SEEDS = {
     # Pop
@@ -145,13 +166,13 @@ def _cold_candidates(query=None):
         return []
 
 
-def _warm_candidates(liked_ids):
+def _warm_candidates(seed_songs):
     candidates = []
     seen = set()
-    seeds = random.sample(liked_ids, min(3, len(liked_ids)))
+    seeds = random.sample(seed_songs, min(3, len(seed_songs)))
     for seed in seeds:
         try:
-            watch = yt.get_watch_playlist(videoId=seed, limit=25)
+            watch = yt.get_watch_playlist(videoId=seed['video_id'], limit=25)
             for t in watch.get('tracks', []):
                 s = _parse_song(t)
                 if s and s['video_id'] not in seen:
@@ -161,24 +182,29 @@ def _warm_candidates(liked_ids):
             pass
     if len(candidates) < 10:
         candidates += _cold_candidates()
-    return candidates
+    return candidates, seeds
 
 
-def get_next_song(user_id, seed=None, artist=None):
+def get_next_song(user_id, seed=None, artist=None, requested=False):
     db = get_db()
     superliked = db.execute(
-        'SELECT video_id FROM plays WHERE user_id=? AND superliked=1 ORDER BY played_at DESC LIMIT 10',
+        'SELECT video_id, title, artist_name, artist_id FROM plays WHERE user_id=? AND superliked=1 ORDER BY played_at DESC LIMIT 10',
         (user_id,)
     ).fetchall()
     liked = db.execute(
-        'SELECT video_id FROM plays WHERE user_id=? AND liked=1 ORDER BY played_at DESC LIMIT 20',
+        'SELECT video_id, title, artist_name, artist_id FROM plays WHERE user_id=? AND liked=1 ORDER BY played_at DESC LIMIT 20',
         (user_id,)
     ).fetchall()
     db.close()
 
-    superliked_ids = [r['video_id'] for r in superliked]
-    liked_ids      = [r['video_id'] for r in liked]
-    seed_ids       = superliked_ids if superliked_ids else liked_ids
+    superliked_songs = [dict(r) for r in superliked]
+    liked_songs      = [dict(r) for r in liked]
+    superliked_ids   = {r['video_id'] for r in superliked_songs}
+    seed_songs       = superliked_songs if superliked_songs else liked_songs
+    seed_ids         = [r['video_id'] for r in seed_songs]
+
+    used_seed = None
+
     if artist:
         try:
             results = yt.search(artist, filter='songs', limit=25)
@@ -187,21 +213,56 @@ def get_next_song(user_id, seed=None, artist=None):
             candidates = []
         if not candidates:
             candidates = _cold_candidates()
+        reason = f'Playing: {artist}'
     elif seed and seed in GENRE_SEEDS:
         candidates = _cold_candidates(random.choice(GENRE_SEEDS[seed]))
+        if requested:
+            if seed == 'more_energy':
+                reason = 'You wanted more energy'
+            elif seed == 'less_energy':
+                reason = 'You wanted something calmer'
+            else:
+                reason = f'You asked for: {SEED_LABELS.get(seed, seed)}'
+        else:
+            reason = f'Genre: {SEED_LABELS.get(seed, seed)}'
     elif not seed_ids or random.random() < COLD_INJECT_RATE:
-        candidates = _cold_candidates() or (_warm_candidates(seed_ids) if seed_ids else [])
+        q = random.choice(SEED_QUERIES)
+        candidates = _cold_candidates(q)
+        if not candidates and seed_songs:
+            candidates, _ = _warm_candidates(seed_songs)
+        reason = f'Mixing it up · {_format_query(q)}'
     else:
-        candidates = _warm_candidates(seed_ids)
+        candidates, used_seeds = _warm_candidates(seed_songs)
+        used_seed = used_seeds[0] if used_seeds else None
+        if used_seed:
+            verb = 'loved' if used_seed['video_id'] in superliked_ids else 'liked'
+            reason = f"Because you {verb}: {used_seed['title']} · {used_seed['artist_name']}"
+        else:
+            reason = "Similar to songs you've liked"
 
     if not candidates:
         return None
 
-    recent  = _recently_played(user_id)
-    scores  = _artist_scores(user_id)
-    fresh   = [c for c in candidates if c['video_id'] not in recent] or candidates
-    ranked  = sorted(fresh, key=lambda s: _score(s, scores), reverse=True)
-    return ranked[0]
+    recent = _recently_played(user_id)
+    scores = _artist_scores(user_id)
+    fresh  = [c for c in candidates if c['video_id'] not in recent] or candidates
+    ranked = sorted(fresh, key=lambda s: _score(s, scores), reverse=True)
+    song   = ranked[0]
+
+    picked_artist_id = song.get('artist_id')
+
+    # Introducing: flag genuinely new artists once we have enough history
+    if picked_artist_id and picked_artist_id not in scores and len(scores) >= 3 and not artist:
+        reason = f'Introducing: {song["artist_name"]}'
+    elif picked_artist_id and picked_artist_id in scores and not artist:
+        # Append artist affinity count when it's significant and not implied by the seed
+        like_count = round(scores[picked_artist_id][0])
+        seed_artist_id = used_seed.get('artist_id') if used_seed else None
+        if like_count >= 3 and picked_artist_id != seed_artist_id:
+            reason += f' · you\'ve liked {song["artist_name"]} {like_count}×'
+
+    song['reason'] = reason
+    return song
 
 
 def record_feedback(user_id, video_id, title, artist_name, artist_id, completion, liked, superliked=False):

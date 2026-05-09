@@ -12,6 +12,7 @@ A self-learning YouTube Music player. The more you use it, the better it knows y
 - Superliking a song (♥) gives the artist a 4x stronger boost and seeds future recommendations from that song first
 - After skipping, an optional chip row lets you tag why (Wrong genre / Not this artist / Not the mood / Overplayed) — stored for future algorithm improvements
 - Cold-starts with curated seed queries spanning 90s–2000s pop, classic rock, country, r&b, and indie; once you have liked songs, pulls candidates from YouTube watch-next playlists — with a 20% random genre injection on every request to prevent taste bubbles
+- Every song shows a reason line explaining why it was picked: which liked song seeded it, which genre is being explored, or when an artist you haven't heard before is being introduced
 
 ## Auth
 
@@ -32,7 +33,7 @@ Sign-in is email-based — no passwords. Enter your email, get a 6-digit code, t
 | `POST` | `/auth/verify-code` | Verify a 6-digit code and return a JWT |
 | `GET` | `/auth/me` | Return the current user ID (Bearer token or cookie) |
 | `POST` | `/auth/logout` | Clear the auth cookie |
-| `GET` | `/api/next` | Get the next recommended song |
+| `GET` | `/api/next` | Get the next recommended song (`seed`, `artist`, `requested=1` params optional) |
 | `POST` | `/api/feedback` | Record play completion and like/skip |
 | `POST` | `/api/superlike` | Superlike the current song |
 | `POST` | `/api/skip-reason` | Tag why a song was skipped |

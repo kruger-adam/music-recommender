@@ -379,6 +379,7 @@ function fmt(s) {
 function updateUI(song) {
   document.getElementById('song-title').textContent  = song.title;
   document.getElementById('song-artist').textContent = song.artist_name || '—';
+  document.getElementById('song-reason').textContent = song.reason || '';
 
   const img  = document.getElementById('album-art');
   const ph   = document.getElementById('art-placeholder');
@@ -418,7 +419,10 @@ function setLoading(on) {
   document.getElementById('btn-pause').disabled     = on;
   document.getElementById('btn-prev').disabled      = on || historyIndex <= 0;
   document.getElementById('btn-superlike').disabled = on;
-  if (on) document.getElementById('song-artist').textContent = 'Loading…';
+  if (on) {
+    document.getElementById('song-artist').textContent = 'Loading…';
+    document.getElementById('song-reason').textContent = '';
+  }
 }
 
 function updateNavButtons() {
@@ -670,13 +674,13 @@ function selectSeed(seed) {
   const parts = [pendingPrimaryReason, pendingGenreKey, seed].filter(Boolean);
   sendSkipReason(parts.join(':'));
   sendFeedback(0, false);
-  loadNextSongWith({ seed });
+  loadNextSongWith({ seed, requested: '1' });
 }
 
 function selectArtist(artistName) {
   sendSkipReason(`not_artist:${artistName}`);
   sendFeedback(0, false);
-  loadNextSongWith({ artist: artistName });
+  loadNextSongWith({ artist: artistName, requested: '1' });
 }
 
 async function loadNextSongWith(params) {
