@@ -94,6 +94,8 @@ async function handleVerifyCode() {
 }
 
 let player           = null;
+let playerReady      = false;
+let pendingVideoId   = null;
 let ytApiReady       = false;
 let currentSong      = null;
 let feedbackSent     = false;
@@ -115,12 +117,13 @@ window.onYouTubeIframeAPIReady = function () {
 };
 
 function initPlayer(videoId) {
+  playerReady = false;
   player = new YT.Player('yt-player', {
     height: '1', width: '1',
     videoId,
     playerVars: { autoplay: 1, playsinline: 1, controls: 0, rel: 0 },
     events: {
-      onReady:       e => e.target.playVideo(),
+      onReady:       e => { playerReady = true; e.target.playVideo(); },
       onStateChange: handleStateChange,
       onError:       handleError,
     },
@@ -237,9 +240,10 @@ function playSong(song) {
   feedbackSent    = false;
   superlikedSent  = false;
   adPlaying       = false;
-  const superBtn = document.getElementById('btn-superlike');
-  superBtn.classList.remove('superliked');
-  superBtn.disabled = false;
+  const superBtn      = document.getElementById('btn-superlike');
+  const wasSuperliked = !!song.superliked;
+  superBtn.classList.toggle('superliked', wasSuperliked);
+  superBtn.disabled = wasSuperliked;
 
   updateUI(song);
   updateMediaSession(song);
@@ -252,8 +256,10 @@ function playSong(song) {
       ? initPlayer(song.video_id)
       : setTimeout(ready, 100);
     ready();
-  } else {
+  } else if (playerReady) {
     player.loadVideoById(song.video_id);
+  } else {
+    pendingVideoId = song.video_id;
   }
 
   startProgress();
@@ -778,7 +784,10 @@ function preinitPlayer() {
     height: '1', width: '1',
     playerVars: { playsinline: 1, controls: 0, rel: 0 },
     events: {
-      onReady:       () => {},
+      onReady: () => {
+        playerReady = true;
+        if (pendingVideoId) { player.loadVideoById(pendingVideoId); pendingVideoId = null; }
+      },
       onStateChange: handleStateChange,
       onError:       handleError,
     },
