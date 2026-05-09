@@ -359,6 +359,13 @@ function togglePause() {
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
+document.querySelector('.progress-bar').addEventListener('click', e => {
+  if (!player?.seekTo || !player.getDuration?.()) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  player.seekTo(frac * player.getDuration(), true);
+});
+
 function startProgress() {
   clearInterval(progressTimer);
   document.getElementById('progress-fill').style.width = '0%';
