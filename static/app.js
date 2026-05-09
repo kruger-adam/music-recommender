@@ -233,6 +233,7 @@ document.addEventListener('visibilitychange', () => {
 
 function playSong(song) {
   currentSong     = song;
+  localStorage.setItem('lastSong', JSON.stringify(song));
   feedbackSent    = false;
   superlikedSent  = false;
   adPlaying       = false;
@@ -307,6 +308,7 @@ function previousSong() {
 function sendFeedback(completion, liked) {
   if (!currentSong || feedbackSent) return;
   feedbackSent = true;
+  localStorage.removeItem('lastSong');
   authFetch('/api/feedback', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -527,6 +529,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   const userId = await checkAuth();
   if (userId) {
     showPlayerPanel();
+    const savedRaw = localStorage.getItem('lastSong');
+    if (savedRaw) {
+      try {
+        const savedSong = JSON.parse(savedRaw);
+        updateUI(savedSong);
+        document.getElementById('btn-start').textContent = 'Resume';
+      } catch {
+        localStorage.removeItem('lastSong');
+      }
+    }
   } else {
     showLoginPanel();
   }
@@ -759,6 +771,7 @@ function preinitPlayer() {
 }
 
 document.getElementById('btn-start').addEventListener('click', () => {
+  const savedRaw = localStorage.getItem('lastSong');
   document.getElementById('btn-start').style.display     = 'none';
   document.getElementById('btn-prev').style.display      = '';
   document.getElementById('btn-pause').style.display     = '';
@@ -766,7 +779,15 @@ document.getElementById('btn-start').addEventListener('click', () => {
   document.getElementById('btn-skip').style.display      = '';
   startAudioSession(); // must happen within user gesture to unlock iOS audio session
   preinitPlayer();     // must happen within user gesture to unlock iOS autoplay
-  loadNextSong();
+  if (savedRaw) {
+    try {
+      playSong(JSON.parse(savedRaw));
+    } catch {
+      loadNextSong();
+    }
+  } else {
+    loadNextSong();
+  }
 });
 
 document.getElementById('btn-prev').addEventListener('click', previousSong);
