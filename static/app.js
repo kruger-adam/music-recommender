@@ -381,7 +381,22 @@ function fmt(s) {
 function updateUI(song) {
   document.getElementById('song-title').textContent  = song.title;
   document.getElementById('song-artist').textContent = song.artist_name || '—';
-  document.getElementById('song-reason').textContent = song.reason || '';
+
+  const reasonEl = document.getElementById('song-reason');
+  reasonEl.textContent = song.reason || '';
+  if (song.reason) {
+    requestAnimationFrame(() => {
+      const dist = reasonEl.scrollWidth - reasonEl.clientWidth;
+      if (dist > 0) {
+        reasonEl.textContent = '';
+        const span = document.createElement('span');
+        span.className = 'marquee-inner';
+        span.textContent = song.reason;
+        span.style.setProperty('--scroll-dist', `-${dist}px`);
+        reasonEl.appendChild(span);
+      }
+    });
+  }
 
   const img  = document.getElementById('album-art');
   const ph   = document.getElementById('art-placeholder');
