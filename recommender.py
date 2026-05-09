@@ -261,7 +261,8 @@ def get_next_song(user_id, seed=None, artist=None, requested=False):
         if like_count >= 3 and picked_artist_id != seed_artist_id:
             reason += f' · you\'ve liked {song["artist_name"]} {like_count}×'
 
-    song['reason'] = reason
+    song['reason']     = reason
+    song['superliked'] = song['video_id'] in superliked_ids
     return song
 
 
