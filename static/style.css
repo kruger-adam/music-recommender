@@ -80,12 +80,12 @@ body {
 
 .song-reason .marquee-inner {
   display: inline-block;
-  animation: marquee-scroll 9s ease-in-out infinite alternate;
+  animation: marquee-scroll 9s linear infinite;
 }
 
 @keyframes marquee-scroll {
-  0%, 15%  { transform: translateX(0); }
-  85%, 100% { transform: translateX(var(--scroll-dist)); }
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(var(--scroll-dist)); }
 }
 
 /* ── Progress ── */

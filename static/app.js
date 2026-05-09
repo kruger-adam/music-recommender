@@ -392,14 +392,16 @@ function updateUI(song) {
   reasonEl.textContent = song.reason || '';
   if (song.reason) {
     requestAnimationFrame(() => {
-      const dist = reasonEl.scrollWidth - reasonEl.clientWidth;
+      const dist      = reasonEl.scrollWidth - reasonEl.clientWidth;
       if (dist > 0) {
+        const textWidth = reasonEl.scrollWidth;
         reasonEl.textContent = '';
         const span = document.createElement('span');
         span.className = 'marquee-inner';
-        span.textContent = song.reason;
-        span.style.setProperty('--scroll-dist', `-${dist}px`);
+        span.textContent = song.reason + '   ·   ' + song.reason;
         reasonEl.appendChild(span);
+        const period = span.offsetWidth - textWidth;
+        span.style.setProperty('--scroll-dist', `-${period}px`);
       }
     });
   }
