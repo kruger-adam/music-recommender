@@ -109,6 +109,8 @@ let skipReasonArtistId = null;
 let skipReasonTimer    = null;
 let silentAudio        = null;
 let wakeLock           = null;
+let nextSong           = null; // preloaded next song
+let nextSongFetch      = null; // in-flight preload promise
 
 // ── YouTube IFrame API ────────────────────────────────────────────────────────
 
@@ -234,6 +236,16 @@ document.addEventListener('visibilitychange', () => {
 
 // ── Song loading ──────────────────────────────────────────────────────────────
 
+function preloadNextSong() {
+  if (historyIndex < songHistory.length - 1) return; // already have songs queued
+  if (nextSong || nextSongFetch) return;
+  nextSongFetch = authFetch('/api/next')
+    .then(r => r.json())
+    .then(song => { if (!song.error) nextSong = song; })
+    .catch(() => {})
+    .finally(() => { nextSongFetch = null; });
+}
+
 function playSong(song) {
   currentSong     = song;
   localStorage.setItem('lastSong', JSON.stringify(song));
@@ -263,6 +275,7 @@ function playSong(song) {
   }
 
   startProgress();
+  preloadNextSong();
 }
 
 async function loadNextSong() {
@@ -275,10 +288,28 @@ async function loadNextSong() {
     return;
   }
 
+  // Use preloaded song instantly if ready
+  if (nextSong) {
+    const song = nextSong;
+    nextSong = null;
+    songHistory.push(song);
+    historyIndex = songHistory.length - 1;
+    playSong(song);
+    refreshStats();
+    drawTrend();
+    return;
+  }
+
+  // Wait for in-flight preload (much faster than a fresh fetch), else fetch fresh
   setLoading(true);
   try {
-    const res  = await authFetch('/api/next');
-    const song = await res.json();
+    if (nextSongFetch) await nextSongFetch;
+    let song = nextSong;
+    nextSong = null;
+    if (!song) {
+      const res = await authFetch('/api/next');
+      song = await res.json();
+    }
     if (song.error) throw new Error(song.error);
 
     songHistory.push(song);
