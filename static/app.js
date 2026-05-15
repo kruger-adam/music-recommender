@@ -447,13 +447,19 @@ function updateUI(song) {
   const img  = document.getElementById('album-art');
   const ph   = document.getElementById('art-placeholder');
   if (song.thumbnail) {
+    img.classList.add('hidden');
+    img.onload = () => img.classList.remove('hidden');
     img.src = song.thumbnail;
-    img.classList.remove('hidden');
     ph.style.display = 'none';
   } else {
     img.classList.add('hidden');
     ph.style.display = 'flex';
   }
+
+  const info = document.getElementById('song-info');
+  info.classList.remove('song-entering');
+  void info.offsetWidth; // force reflow to restart animation
+  info.classList.add('song-entering');
 }
 
 function sendSuperlike() {

@@ -50,6 +50,15 @@ body {
 }
 
 /* ── Song info ── */
+#song-info { margin-bottom: 0; }
+
+@keyframes song-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.song-entering { animation: song-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
 .song-title {
   font-size: 17px;
   font-weight: 700;
