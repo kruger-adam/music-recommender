@@ -176,11 +176,13 @@ function setupMediaSession() {
   if (!('mediaSession' in navigator)) return;
   navigator.mediaSession.setActionHandler('play', () => {
     player?.playVideo();
+    silentAudio?.play().catch(() => {});
     navigator.mediaSession.playbackState = 'playing';
     document.getElementById('btn-pause').textContent = 'Pause';
   });
   navigator.mediaSession.setActionHandler('pause', () => {
     player?.pauseVideo();
+    silentAudio?.pause();
     navigator.mediaSession.playbackState = 'paused';
     document.getElementById('btn-pause').textContent = 'Resume';
   });
@@ -379,10 +381,12 @@ function togglePause() {
   const btn = document.getElementById('btn-pause');
   if (player.getPlayerState() === YT.PlayerState.PLAYING) {
     player.pauseVideo();
+    silentAudio?.pause();
     btn.textContent = 'Resume';
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
   } else if (player.getPlayerState() === YT.PlayerState.PAUSED) {
     player.playVideo();
+    silentAudio?.play().catch(() => {});
     btn.textContent = 'Pause';
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
   }
