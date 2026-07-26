@@ -34,7 +34,7 @@ Sign-in is email-based — no passwords. Enter your email, get a 6-digit code, t
 | `POST` | `/auth/verify-code` | Verify a 6-digit code and return a JWT |
 | `GET` | `/auth/me` | Return the current user ID (Bearer token or cookie) |
 | `POST` | `/auth/logout` | Clear the auth cookie |
-| `GET` | `/api/next` | Get the next recommended song (`seed`, `artist`, `requested=1` params optional) |
+| `GET` | `/api/next` | Get the next recommended song (`seed`, `artist`, `requested=1`, `exclude` params optional) |
 | `POST` | `/api/feedback` | Record play completion and like/skip |
 | `POST` | `/api/superlike` | Superlike the current song |
 | `POST` | `/api/skip-reason` | Tag why a song was skipped |

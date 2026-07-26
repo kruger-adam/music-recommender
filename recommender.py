@@ -168,8 +168,8 @@ def _cold_candidates(query=None):
 
 def _warm_candidates(seed_songs):
     candidates = []
-    seen = set()
     seeds = random.sample(seed_songs, min(3, len(seed_songs)))
+    seen = {s['video_id'] for s in seeds}  # don't let a seed recommend itself
     for seed in seeds:
         try:
             watch = yt.get_watch_playlist(videoId=seed['video_id'], limit=25)
@@ -185,7 +185,7 @@ def _warm_candidates(seed_songs):
     return candidates, seeds
 
 
-def get_next_song(user_id, seed=None, artist=None, requested=False):
+def get_next_song(user_id, seed=None, artist=None, requested=False, exclude=None):
     db = get_db()
     superliked = db.execute(
         'SELECT video_id, title, artist_name, artist_id FROM plays WHERE user_id=? AND superliked=1 ORDER BY played_at DESC LIMIT 10',
@@ -243,7 +243,7 @@ def get_next_song(user_id, seed=None, artist=None, requested=False):
     if not candidates:
         return None
 
-    recent = _recently_played(user_id)
+    recent = _recently_played(user_id) | set(exclude or ())
     scores = _artist_scores(user_id)
     fresh  = [c for c in candidates if c['video_id'] not in recent] or candidates
     ranked = sorted(fresh, key=lambda s: _score(s, scores), reverse=True)

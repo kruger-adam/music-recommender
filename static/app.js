@@ -241,9 +241,11 @@ document.addEventListener('visibilitychange', () => {
 function preloadNextSong() {
   if (historyIndex < songHistory.length - 1) return; // already have songs queued
   if (nextSong || nextSongFetch) return;
-  nextSongFetch = authFetch('/api/next')
+  const params = new URLSearchParams();
+  if (currentSong) params.set('exclude', currentSong.video_id);
+  nextSongFetch = authFetch('/api/next?' + params)
     .then(r => r.json())
-    .then(song => { if (!song.error) nextSong = song; })
+    .then(song => { if (!song.error && song.video_id !== currentSong?.video_id) nextSong = song; })
     .catch(() => {})
     .finally(() => { nextSongFetch = null; });
 }
@@ -309,10 +311,13 @@ async function loadNextSong() {
     let song = nextSong;
     nextSong = null;
     if (!song) {
-      const res = await authFetch('/api/next');
+      const params = new URLSearchParams();
+      if (currentSong) params.set('exclude', currentSong.video_id);
+      const res = await authFetch('/api/next?' + params);
       song = await res.json();
     }
     if (song.error) throw new Error(song.error);
+    if (song.video_id === currentSong?.video_id) throw new Error('recommender returned the current song again');
 
     songHistory.push(song);
     historyIndex = songHistory.length - 1;
@@ -769,6 +774,7 @@ function selectArtist(artistName) {
 async function loadNextSongWith(params) {
   setLoading(true);
   try {
+    if (currentSong) params.exclude = currentSong.video_id;
     const url  = '/api/next?' + new URLSearchParams(params);
     const res  = await authFetch(url);
     const song = await res.json();

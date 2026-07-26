@@ -189,7 +189,8 @@ def next_song():
     seed      = request.args.get('seed')
     artist    = request.args.get('artist')
     requested = request.args.get('requested') == '1'
-    song      = get_next_song(get_user_id(), seed=seed, artist=artist, requested=requested)
+    exclude   = [v for v in request.args.get('exclude', '').split(',') if v]
+    song      = get_next_song(get_user_id(), seed=seed, artist=artist, requested=requested, exclude=exclude)
     if song:
         return jsonify(song)
     return jsonify({'error': 'No songs found'}), 503
