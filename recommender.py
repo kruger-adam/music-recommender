@@ -7,6 +7,10 @@ yt = YTMusic()
 
 LIKE_THRESHOLD = 0.80   # played ≥80% → liked
 RECENT_WINDOW  = 50     # don't repeat last N played songs
+SEARCH_RESULT_LIMIT = 8
+SEARCH_SEED_WINDOW   = 10   # how many recent searched songs can seed recommendations
+SEARCH_LIKE_FLOOR    = 0.5  # searching for a song is itself a strong taste signal
+SEARCH_SKIP_DISCOUNT = 0.3  # a quick bail after a deliberate search is likely "wrong version", not "wrong artist"
 
 SEED_QUERIES = [
     # Pop
@@ -129,6 +133,17 @@ def _parse_song(raw):
     }
 
 
+def search_songs(query, limit=SEARCH_RESULT_LIMIT):
+    query = (query or '').strip()
+    if not query:
+        return []
+    try:
+        results = yt.search(query, filter='songs', limit=limit)
+    except Exception:
+        return []
+    return [s for s in (_parse_song(r) for r in results) if s]
+
+
 def _artist_scores(user_id):
     db = get_db()
     rows = db.execute(
@@ -195,13 +210,28 @@ def get_next_song(user_id, seed=None, artist=None, requested=False, exclude=None
         'SELECT video_id, title, artist_name, artist_id FROM plays WHERE user_id=? AND liked=1 ORDER BY played_at DESC LIMIT 20',
         (user_id,)
     ).fetchall()
+    searched = db.execute(
+        '''SELECT video_id, title, artist_name, artist_id FROM plays
+           WHERE user_id=? AND source='searched' AND completion >= 0.1
+           ORDER BY played_at DESC LIMIT ?''',
+        (user_id, SEARCH_SEED_WINDOW)
+    ).fetchall()
     db.close()
 
     superliked_songs = [dict(r) for r in superliked]
     liked_songs      = [dict(r) for r in liked]
+    searched_songs   = [dict(r) for r in searched]
     superliked_ids   = {r['video_id'] for r in superliked_songs}
-    seed_songs       = superliked_songs if superliked_songs else liked_songs
-    seed_ids         = [r['video_id'] for r in seed_songs]
+    liked_ids        = {r['video_id'] for r in liked_songs}
+
+    # A deliberate search is itself a taste signal, so searched songs can seed
+    # recommendations even if they weren't played long enough to count as "liked".
+    searched_only_ids = {s['video_id'] for s in searched_songs} - liked_ids - superliked_ids
+    if superliked_songs:
+        seed_songs = superliked_songs
+    else:
+        seed_songs = liked_songs + [s for s in searched_songs if s['video_id'] in searched_only_ids]
+    seed_ids = [r['video_id'] for r in seed_songs]
 
     used_seed = None
 
@@ -235,7 +265,12 @@ def get_next_song(user_id, seed=None, artist=None, requested=False, exclude=None
         candidates, used_seeds = _warm_candidates(seed_songs)
         used_seed = used_seeds[0] if used_seeds else None
         if used_seed:
-            verb = 'loved' if used_seed['video_id'] in superliked_ids else 'liked'
+            if used_seed['video_id'] in superliked_ids:
+                verb = 'loved'
+            elif used_seed['video_id'] in searched_only_ids:
+                verb = 'searched for'
+            else:
+                verb = 'liked'
             reason = f"Because you {verb}: {used_seed['title']} · {used_seed['artist_name']}"
         else:
             reason = "Similar to songs you've liked"
@@ -266,11 +301,11 @@ def get_next_song(user_id, seed=None, artist=None, requested=False, exclude=None
     return song
 
 
-def record_feedback(user_id, video_id, title, artist_name, artist_id, completion, liked, superliked=False):
+def record_feedback(user_id, video_id, title, artist_name, artist_id, completion, liked, superliked=False, source='recommended'):
     db = get_db()
     db.execute(
-        'INSERT INTO plays (user_id, video_id, title, artist_id, artist_name, completion, liked, superliked) VALUES (?,?,?,?,?,?,?,?)',
-        (user_id, video_id, title, artist_id, artist_name, completion, 1 if liked else 0, 1 if superliked else 0),
+        'INSERT INTO plays (user_id, video_id, title, artist_id, artist_name, completion, liked, superliked, source) VALUES (?,?,?,?,?,?,?,?,?)',
+        (user_id, video_id, title, artist_id, artist_name, completion, 1 if liked else 0, 1 if superliked else 0, source),
     )
     if artist_id:
         if superliked:
@@ -282,8 +317,15 @@ def record_feedback(user_id, video_id, title, artist_name, artist_id, completion
                     artist_name = excluded.artist_name
             ''', (user_id, artist_id, artist_name))
         else:
-            like_weight = round(completion, 4)
-            skip_weight = round(1.0 - completion, 4)
+            if source == 'searched':
+                # Choosing to search for and play this song is a stronger, more
+                # deliberate signal than a recommendation landing well — floor the
+                # like weight and discount the skip weight accordingly.
+                like_weight = round(max(completion, SEARCH_LIKE_FLOOR), 4)
+                skip_weight = round((1.0 - completion) * SEARCH_SKIP_DISCOUNT, 4)
+            else:
+                like_weight = round(completion, 4)
+                skip_weight = round(1.0 - completion, 4)
             db.execute('''
                 INSERT INTO artist_scores (user_id, artist_id, artist_name, like_count, skip_count)
                 VALUES (?,?,?,?,?)

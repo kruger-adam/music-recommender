@@ -13,6 +13,7 @@ A self-learning YouTube Music player. The more you use it, the better it knows y
 - After skipping, an optional chip row lets you tag why (Wrong genre / Not this artist / Not the mood / Overplayed) — stored for future algorithm improvements
 - Cold-starts with curated seed queries spanning 90s–2000s pop, classic rock, country, r&b, and indie; once you have liked songs, pulls candidates from YouTube watch-next playlists — with a 20% random genre injection on every request to prevent taste bubbles
 - Every song shows a reason line explaining why it was picked: which liked song seeded it, which genre is being explored, or when an artist you haven't heard before is being introduced
+- Search (🔍) lets you jump straight to a specific song, with a live autocomplete dropdown as you type. Picking a search result plays it immediately and feeds the algorithm: searching for a song is treated as a strong taste signal for that artist (a floor on the like weight), while an early skip afterward counts far less against it than skipping a recommendation would — and the song is eligible to seed future recommendations even if you didn't listen long enough for it to count as "liked"
 - The last-played song is saved to localStorage — refreshing mid-song shows a "Resume" button that restarts it; the offer clears once you skip or finish the song
 
 ## Auth
@@ -35,6 +36,7 @@ Sign-in is email-based — no passwords. Enter your email, get a 6-digit code, t
 | `GET` | `/auth/me` | Return the current user ID (Bearer token or cookie) |
 | `POST` | `/auth/logout` | Clear the auth cookie |
 | `GET` | `/api/next` | Get the next recommended song (`seed`, `artist`, `requested=1`, `exclude` params optional) |
+| `GET` | `/api/search` | Search for a song by title/artist (`q` param) — powers the autocomplete dropdown |
 | `POST` | `/api/feedback` | Record play completion and like/skip |
 | `POST` | `/api/superlike` | Superlike the current song |
 | `POST` | `/api/skip-reason` | Tag why a song was skipped |

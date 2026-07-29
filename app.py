@@ -9,7 +9,7 @@ from email.mime.text import MIMEText
 import jwt
 from flask import Flask, jsonify, request, send_from_directory, redirect, make_response
 from db import init_db, get_db
-from recommender import get_next_song, record_feedback
+from recommender import get_next_song, record_feedback, search_songs
 
 app = Flask(__name__, static_folder='static')
 init_db()
@@ -196,6 +196,13 @@ def next_song():
     return jsonify({'error': 'No songs found'}), 503
 
 
+@app.route('/api/search')
+def search():
+    query = request.args.get('q', '')
+    songs = search_songs(query)
+    return jsonify({'songs': songs})
+
+
 @app.route('/api/similar-artists')
 def similar_artists():
     video_id       = request.args.get('video_id')
@@ -235,6 +242,7 @@ def feedback():
         artist_id   = d.get('artist_id'),
         completion  = d['completion'],
         liked       = d['liked'],
+        source      = d.get('source', 'recommended'),
     )
     return jsonify({'ok': True})
 
@@ -251,6 +259,7 @@ def superlike():
         completion  = d.get('completion', 1.0),
         liked       = True,
         superliked  = True,
+        source      = d.get('source', 'recommended'),
     )
     return jsonify({'ok': True})
 

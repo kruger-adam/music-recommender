@@ -112,6 +112,106 @@ let wakeLock           = null;
 let nextSong           = null; // preloaded next song
 let nextSongFetch      = null; // in-flight preload promise
 
+// ── Search ────────────────────────────────────────────────────────────────────
+
+let searchResults      = [];
+let searchHighlight    = -1;
+let searchDebounce     = null;
+let searchAbort        = null;
+
+function toggleSearchPanel(open) {
+  const panel = document.getElementById('search-panel');
+  const btn   = document.getElementById('btn-search-toggle');
+  const show  = open ?? panel.style.display === 'none';
+  panel.style.display = show ? '' : 'none';
+  btn.classList.toggle('active', show);
+  if (show) {
+    setTimeout(() => document.getElementById('search-input').focus(), 30);
+  } else {
+    document.getElementById('search-input').value = '';
+    renderSearchResults([], '');
+  }
+}
+
+function renderSearchResults(songs, status) {
+  searchResults   = songs;
+  searchHighlight = -1;
+  const container = document.getElementById('search-results');
+  if (status) {
+    container.innerHTML = `<div class="search-status">${status}</div>`;
+    return;
+  }
+  container.innerHTML = '';
+  songs.forEach((song, i) => {
+    const row = document.createElement('div');
+    row.className = 'search-result';
+    row.dataset.index = i;
+    row.innerHTML = `
+      <img src="${song.thumbnail || ''}" alt="">
+      <div class="search-result-text">
+        <div class="search-result-title">${escapeHtml(song.title)}</div>
+        <div class="search-result-artist">${escapeHtml(song.artist_name || '')}</div>
+      </div>
+    `;
+    row.addEventListener('click', () => selectSearchResult(song));
+    container.appendChild(row);
+  });
+}
+
+function escapeHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s || '';
+  return div.innerHTML;
+}
+
+function updateSearchHighlight() {
+  document.querySelectorAll('.search-result').forEach((el, i) => {
+    el.classList.toggle('highlighted', i === searchHighlight);
+  });
+}
+
+async function runSearch(query) {
+  if (searchAbort) searchAbort.abort();
+  if (!query.trim()) {
+    renderSearchResults([], '');
+    return;
+  }
+  renderSearchResults([], 'Searching…');
+  searchAbort = new AbortController();
+  try {
+    const res  = await authFetch('/api/search?q=' + encodeURIComponent(query), { signal: searchAbort.signal });
+    const data = await res.json();
+    if (!data.songs || !data.songs.length) {
+      renderSearchResults([], 'No songs found');
+    } else {
+      renderSearchResults(data.songs, '');
+    }
+  } catch (err) {
+    if (err.name !== 'AbortError') renderSearchResults([], 'Search failed');
+  }
+}
+
+function selectSearchResult(song) {
+  toggleSearchPanel(false);
+  const picked = { ...song, source: 'searched', reason: 'You searched for this' };
+
+  document.getElementById('btn-start').style.display     = 'none';
+  document.getElementById('btn-prev').style.display       = '';
+  document.getElementById('btn-pause').style.display      = '';
+  document.getElementById('btn-superlike').style.display  = '';
+  document.getElementById('btn-skip').style.display       = '';
+  startAudioSession();
+  preinitPlayer();
+
+  nextSong      = null;
+  nextSongFetch = null;
+  songHistory.push(picked);
+  historyIndex = songHistory.length - 1;
+  playSong(picked);
+  refreshStats();
+  drawTrend();
+}
+
 // ── YouTube IFrame API ────────────────────────────────────────────────────────
 
 window.onYouTubeIframeAPIReady = function () {
@@ -363,6 +463,7 @@ function sendFeedback(completion, liked) {
       artist_id:   currentSong.artist_id,
       completion,
       liked,
+      source:      currentSong.source || 'recommended',
     }),
   });
 }
@@ -484,6 +585,7 @@ function sendSuperlike() {
       artist_name: currentSong.artist_name,
       artist_id:   currentSong.artist_id,
       completion:  1.0,
+      source:      currentSong.source || 'recommended',
     }),
   });
   const btn = document.getElementById('btn-superlike');
@@ -875,9 +977,47 @@ document.getElementById('btn-superlike').addEventListener('click', sendSuperlike
 
 document.addEventListener('keydown', (e) => {
   if (!currentSong) return;
+  if (e.target && e.target.tagName === 'INPUT') return;
   if (e.key === 'ArrowRight') { e.preventDefault(); skipSong(); }
   if (e.key === 'ArrowLeft')  { e.preventDefault(); previousSong(); }
   if (e.key === ' ')          { e.preventDefault(); togglePause(); }
+});
+
+document.getElementById('btn-search-toggle').addEventListener('click', () => toggleSearchPanel());
+
+document.getElementById('search-input').addEventListener('input', (e) => {
+  clearTimeout(searchDebounce);
+  const query = e.target.value;
+  searchDebounce = setTimeout(() => runSearch(query), 300);
+});
+
+document.getElementById('search-input').addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (searchResults.length) {
+      searchHighlight = Math.min(searchHighlight + 1, searchResults.length - 1);
+      updateSearchHighlight();
+    }
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (searchResults.length) {
+      searchHighlight = Math.max(searchHighlight - 1, 0);
+      updateSearchHighlight();
+    }
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    const song = searchResults[searchHighlight >= 0 ? searchHighlight : 0];
+    if (song) selectSearchResult(song);
+  } else if (e.key === 'Escape') {
+    toggleSearchPanel(false);
+  }
+});
+
+document.addEventListener('click', (e) => {
+  const wrap = document.getElementById('search-wrap');
+  if (wrap && !wrap.contains(e.target) && document.getElementById('search-panel').style.display !== 'none') {
+    toggleSearchPanel(false);
+  }
 });
 
 // Inject YouTube IFrame API script

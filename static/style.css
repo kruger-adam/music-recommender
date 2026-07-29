@@ -19,6 +19,114 @@ body {
   box-shadow: 0 24px 64px rgba(0,0,0,0.6);
 }
 
+/* ── Search ── */
+.search-wrap {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.btn-search-toggle {
+  background: transparent;
+  border: 1.5px solid #3a3a3a;
+  color: #999;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.btn-search-toggle:hover { border-color: #888; color: #fff; }
+.btn-search-toggle.active { border-color: #1db954; color: #1db954; }
+
+.search-panel {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  width: 284px;
+  background: #1e1e1e;
+  border: 1px solid #2e2e2e;
+  border-radius: 14px;
+  padding: 10px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+  z-index: 10;
+  text-align: left;
+  animation: fadeIn 0.15s ease;
+}
+
+#search-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 50px;
+  border: 1.5px solid #2e2e2e;
+  background: #111;
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+}
+
+#search-input:focus { border-color: #555; }
+
+.search-results {
+  margin-top: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.search-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.search-result:hover,
+.search-result.highlighted {
+  background: #2a2a2a;
+}
+
+.search-result img {
+  width: 36px;
+  height: 36px;
+  border-radius: 5px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #2a2a2a;
+}
+
+.search-result-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.search-result-title {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-result-artist {
+  font-size: 11px;
+  color: #888;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-status {
+  font-size: 12px;
+  color: #555;
+  padding: 8px 6px;
+  text-align: center;
+}
+
 /* ── Album art ── */
 .art-wrap {
   width: 240px;

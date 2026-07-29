@@ -93,5 +93,9 @@ def init_db():
         conn.execute('ALTER TABLE plays ADD COLUMN skip_reason TEXT')
     except Exception:
         pass
+    try:
+        conn.execute("ALTER TABLE plays ADD COLUMN source TEXT DEFAULT 'recommended'")
+    except Exception:
+        pass
     conn.commit()
     conn.close()
