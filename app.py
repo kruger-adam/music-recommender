@@ -203,6 +203,30 @@ def search():
     return jsonify({'songs': songs})
 
 
+@app.route('/api/history')
+def history():
+    user_id = get_user_id()
+    db = get_db()
+    rows = db.execute('''
+        SELECT video_id, title, artist_name, artist_id, MAX(played_at) as played_at
+        FROM plays
+        WHERE user_id=?
+        GROUP BY video_id
+        ORDER BY played_at DESC
+        LIMIT 30
+    ''', (user_id,)).fetchall()
+    db.close()
+    songs = [{
+        'video_id':    r['video_id'],
+        'title':       r['title'],
+        'artist_name': r['artist_name'],
+        'artist_id':   r['artist_id'],
+        'played_at':   r['played_at'],
+        'thumbnail':   f"https://img.youtube.com/vi/{r['video_id']}/hqdefault.jpg",
+    } for r in rows]
+    return jsonify({'songs': songs})
+
+
 @app.route('/api/similar-artists')
 def similar_artists():
     video_id       = request.args.get('video_id')

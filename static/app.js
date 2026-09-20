@@ -212,6 +212,83 @@ function selectSearchResult(song) {
   drawTrend();
 }
 
+// ── Listen history ────────────────────────────────────────────────────────────
+
+function toggleHistoryPanel(open) {
+  const panel = document.getElementById('history-panel');
+  const btn   = document.getElementById('btn-history-toggle');
+  const show  = open ?? panel.style.display === 'none';
+  panel.style.display = show ? '' : 'none';
+  btn.classList.toggle('active', show);
+  if (show) loadHistory();
+}
+
+async function loadHistory() {
+  renderHistoryResults([], 'Loading…');
+  try {
+    const res  = await authFetch('/api/history');
+    const data = await res.json();
+    if (!data.songs || !data.songs.length) {
+      renderHistoryResults([], 'No history yet');
+    } else {
+      renderHistoryResults(data.songs, '');
+    }
+  } catch {
+    renderHistoryResults([], 'Failed to load history');
+  }
+}
+
+function renderHistoryResults(songs, status) {
+  const container = document.getElementById('history-results');
+  if (status) {
+    container.innerHTML = `<div class="search-status">${status}</div>`;
+    return;
+  }
+  container.innerHTML = '';
+  songs.forEach(song => {
+    const row = document.createElement('div');
+    row.className = 'search-result';
+    row.innerHTML = `
+      <img src="${song.thumbnail || ''}" alt="">
+      <div class="search-result-text">
+        <div class="search-result-title">${escapeHtml(song.title)}</div>
+        <div class="search-result-artist">${escapeHtml(song.artist_name || '')}</div>
+      </div>
+    `;
+    row.addEventListener('click', () => selectHistoryResult(song));
+    container.appendChild(row);
+  });
+}
+
+function selectHistoryResult(song) {
+  toggleHistoryPanel(false);
+  const picked = {
+    video_id:    song.video_id,
+    title:       song.title,
+    artist_name: song.artist_name,
+    artist_id:   song.artist_id,
+    thumbnail:   song.thumbnail,
+    source:      'history',
+    reason:      'From your history',
+  };
+
+  document.getElementById('btn-start').style.display     = 'none';
+  document.getElementById('btn-prev').style.display       = '';
+  document.getElementById('btn-pause').style.display      = '';
+  document.getElementById('btn-superlike').style.display  = '';
+  document.getElementById('btn-skip').style.display       = '';
+  startAudioSession();
+  preinitPlayer();
+
+  nextSong      = null;
+  nextSongFetch = null;
+  songHistory.push(picked);
+  historyIndex = songHistory.length - 1;
+  playSong(picked);
+  refreshStats();
+  drawTrend();
+}
+
 // ── YouTube IFrame API ────────────────────────────────────────────────────────
 
 window.onYouTubeIframeAPIReady = function () {
@@ -984,6 +1061,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.getElementById('btn-search-toggle').addEventListener('click', () => toggleSearchPanel());
+document.getElementById('btn-history-toggle').addEventListener('click', () => toggleHistoryPanel());
 
 document.getElementById('search-input').addEventListener('input', (e) => {
   clearTimeout(searchDebounce);
@@ -1017,6 +1095,10 @@ document.addEventListener('click', (e) => {
   const wrap = document.getElementById('search-wrap');
   if (wrap && !wrap.contains(e.target) && document.getElementById('search-panel').style.display !== 'none') {
     toggleSearchPanel(false);
+  }
+  const hwrap = document.getElementById('history-wrap');
+  if (hwrap && !hwrap.contains(e.target) && document.getElementById('history-panel').style.display !== 'none') {
+    toggleHistoryPanel(false);
   }
 });
 

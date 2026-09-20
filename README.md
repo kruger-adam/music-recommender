@@ -15,6 +15,7 @@ A self-learning YouTube Music player. The more you use it, the better it knows y
 - Every song shows a reason line explaining why it was picked: which liked song seeded it, which genre is being explored, or when an artist you haven't heard before is being introduced
 - Search (🔍) lets you jump straight to a specific song, with a live autocomplete dropdown as you type. Picking a search result plays it immediately and feeds the algorithm: searching for a song is treated as a strong taste signal for that artist (a floor on the like weight), while an early skip afterward counts far less against it than skipping a recommendation would — and the song is eligible to seed future recommendations even if you didn't listen long enough for it to count as "liked"
 - The last-played song is saved to localStorage — refreshing mid-song shows a "Resume" button that restarts it; the offer clears once you skip or finish the song
+- History (🕘) shows your recently played songs (deduplicated by track, most recent first) — click one to replay it immediately
 
 ## Auth
 
@@ -37,6 +38,7 @@ Sign-in is email-based — no passwords. Enter your email, get a 6-digit code, t
 | `POST` | `/auth/logout` | Clear the auth cookie |
 | `GET` | `/api/next` | Get the next recommended song (`seed`, `artist`, `requested=1`, `exclude` params optional) |
 | `GET` | `/api/search` | Search for a song by title/artist (`q` param) — powers the autocomplete dropdown |
+| `GET` | `/api/history` | Get your recently played songs, deduplicated by track, most recent first |
 | `POST` | `/api/feedback` | Record play completion and like/skip |
 | `POST` | `/api/superlike` | Superlike the current song |
 | `POST` | `/api/skip-reason` | Tag why a song was skipped |

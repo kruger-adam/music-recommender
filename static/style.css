@@ -19,13 +19,20 @@ body {
   box-shadow: 0 24px 64px rgba(0,0,0,0.6);
 }
 
-/* ── Search ── */
-.search-wrap {
-  position: relative;
+/* ── Top bar (history + search) ── */
+.top-bar {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   margin-bottom: 10px;
 }
+
+.history-wrap,
+.search-wrap {
+  position: relative;
+}
+
+/* ── Search ── */
 
 .btn-search-toggle {
   background: transparent;
