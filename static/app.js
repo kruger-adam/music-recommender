@@ -201,7 +201,6 @@ function selectSearchResult(song) {
   document.getElementById('btn-superlike').style.display  = '';
   document.getElementById('btn-skip').style.display       = '';
   startAudioSession();
-  preinitPlayer();
 
   nextSong      = null;
   nextSongFetch = null;
@@ -278,7 +277,6 @@ function selectHistoryResult(song) {
   document.getElementById('btn-superlike').style.display  = '';
   document.getElementById('btn-skip').style.display       = '';
   startAudioSession();
-  preinitPlayer();
 
   nextSong      = null;
   nextSongFetch = null;
