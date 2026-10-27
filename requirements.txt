@@ -2,4 +2,4 @@ flask>=3.0
 ytmusicapi>=1.7
 libsql-experimental
 PyJWT>=2.8
-certifi==2026.10.19
+certifi==2026.10.23
