@@ -109,6 +109,7 @@ let skipReasonArtistId = null;
 let skipReasonTimer    = null;
 let silentAudio        = null;
 let wakeLock           = null;
+let userPaused         = false; // set only by an explicit user pause (button, media key, lock screen)
 let nextSong           = null; // preloaded next song
 let nextSongFetch      = null; // in-flight preload promise
 
@@ -308,6 +309,10 @@ function initPlayer(videoId) {
 }
 
 function handleStateChange(e) {
+  // Derive the button label from the player's real state so it can't drift
+  if (e.data === YT.PlayerState.PLAYING) document.getElementById('btn-pause').textContent = 'Pause';
+  if (e.data === YT.PlayerState.PAUSED)  document.getElementById('btn-pause').textContent = 'Resume';
+
   if (e.data === YT.PlayerState.PLAYING) {
     const playingId = player.getVideoData()?.video_id;
     if (playingId && currentSong && playingId !== currentSong.video_id) {
@@ -350,12 +355,14 @@ function handleError(e) {
 function setupMediaSession() {
   if (!('mediaSession' in navigator)) return;
   navigator.mediaSession.setActionHandler('play', () => {
+    userPaused = false;
     player?.playVideo();
     silentAudio?.play().catch(() => {});
     navigator.mediaSession.playbackState = 'playing';
     document.getElementById('btn-pause').textContent = 'Pause';
   });
   navigator.mediaSession.setActionHandler('pause', () => {
+    userPaused = true;
     player?.pauseVideo();
     silentAudio?.pause();
     navigator.mediaSession.playbackState = 'paused';
@@ -397,6 +404,7 @@ async function acquireWakeLock() {
 
 // iOS suspends cross-origin iframes (YouTube embed) when backgrounded — we can't
 // prevent the stop, but we track whether we were playing and resume immediately on return.
+// Skip the resume if the user paused while the tab was hidden (media key, lock screen).
 let wasPlayingBeforeHide = false;
 
 document.addEventListener('visibilitychange', () => {
@@ -404,7 +412,7 @@ document.addEventListener('visibilitychange', () => {
     wasPlayingBeforeHide = player?.getPlayerState?.() === YT.PlayerState.PLAYING;
   } else {
     acquireWakeLock();
-    if (wasPlayingBeforeHide && currentSong) {
+    if (wasPlayingBeforeHide && !userPaused && currentSong) {
       // Small delay lets the player settle after iOS thaws the frozen page
       setTimeout(() => player?.playVideo(), 200);
     }
@@ -427,6 +435,7 @@ function preloadNextSong() {
 
 function playSong(song) {
   currentSong     = song;
+  userPaused      = false;
   localStorage.setItem('lastSong', JSON.stringify(song));
   feedbackSent    = false;
   superlikedSent  = false;
@@ -561,11 +570,13 @@ function togglePause() {
   if (!player) return;
   const btn = document.getElementById('btn-pause');
   if (player.getPlayerState() === YT.PlayerState.PLAYING) {
+    userPaused = true;
     player.pauseVideo();
     silentAudio?.pause();
     btn.textContent = 'Resume';
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
   } else if (player.getPlayerState() === YT.PlayerState.PAUSED) {
+    userPaused = false;
     player.playVideo();
     silentAudio?.play().catch(() => {});
     btn.textContent = 'Pause';
